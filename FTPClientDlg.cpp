@@ -213,7 +213,7 @@ void CFTPClientDlg::OnBnClickedConnect()
 
 void CFTPClientDlg::Connect()
 {
-
+	//
 }
 
 void CFTPClientDlg::OnBnClickedRefresh()
