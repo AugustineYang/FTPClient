@@ -65,6 +65,16 @@ BEGIN_MESSAGE_MAP(CFTPClientDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_LBN_SELCHANGE(IDC_LIST1, &CFTPClientDlg::OnLbnSelchangeList1)
+	ON_EN_CHANGE(IDC_IPAddress, &CFTPClientDlg::OnEnChangeIpaddress)
+	ON_EN_CHANGE(IDC_Account, &CFTPClientDlg::OnEnChangeAccount)
+	ON_EN_CHANGE(IDC_Password, &CFTPClientDlg::OnEnChangePassword)
+	ON_BN_CLICKED(IDC_Connect, &CFTPClientDlg::OnBnClickedConnect)
+	ON_BN_CLICKED(IDC_Refresh, &CFTPClientDlg::OnBnClickedRefresh)
+	ON_BN_CLICKED(IDC_Upload, &CFTPClientDlg::OnBnClickedUpload)
+	ON_BN_CLICKED(IDC_Download, &CFTPClientDlg::OnBnClickedDownload)
+	ON_BN_CLICKED(IDC_Delete, &CFTPClientDlg::OnBnClickedDelete)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_PROGRESS1, &CFTPClientDlg::OnNMCustomdrawProgress1)
 END_MESSAGE_MAP()
 
 
@@ -153,3 +163,79 @@ HCURSOR CFTPClientDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+void CFTPClientDlg::OnLbnSelchangeList1()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnEnChangeIpaddress()
+{
+	// TODO:  如果该控件是 RICHEDIT 控件，它将不
+	// 发送此通知，除非重写 CDialogEx::OnInitDialog()
+	// 函数并调用 CRichEditCtrl().SetEventMask()，
+	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
+
+	// TODO:  在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnEnChangeAccount()
+{
+	// TODO:  如果该控件是 RICHEDIT 控件，它将不
+	// 发送此通知，除非重写 CDialogEx::OnInitDialog()
+	// 函数并调用 CRichEditCtrl().SetEventMask()，
+	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
+
+	// TODO:  在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnEnChangePassword()
+{
+	// TODO:  如果该控件是 RICHEDIT 控件，它将不
+	// 发送此通知，除非重写 CDialogEx::OnInitDialog()
+	// 函数并调用 CRichEditCtrl().SetEventMask()，
+	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
+
+	// TODO:  在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnBnClickedConnect()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnBnClickedRefresh()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnBnClickedUpload()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnBnClickedDownload()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnBnClickedDelete()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CFTPClientDlg::OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMCUSTOMDRAW pNMCD = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
+	// TODO: 在此添加控件通知处理程序代码
+	*pResult = 0;
+}
