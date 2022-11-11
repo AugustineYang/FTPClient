@@ -206,8 +206,14 @@ void CFTPClientDlg::OnEnChangePassword()
 void CFTPClientDlg::OnBnClickedConnect()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	this->Connect();
 }
 
+
+void CFTPClientDlg::Connect()
+{
+
+}
 
 void CFTPClientDlg::OnBnClickedRefresh()
 {
