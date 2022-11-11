@@ -32,7 +32,6 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnEnChangeEdit1();
 	afx_msg void OnLbnSelchangeList1();
 	afx_msg void OnEnChangeIpaddress();
 	afx_msg void OnEnChangeAccount();
@@ -43,4 +42,6 @@ public:
 	afx_msg void OnBnClickedDownload();
 	afx_msg void OnBnClickedDelete();
 	afx_msg void OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult);
+
+	afx_msg void Connect();
 };
