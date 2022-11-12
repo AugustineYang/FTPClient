@@ -7,6 +7,9 @@
 #include "FTPClient.h"
 #include "FTPClientDlg.h"
 #include "afxdialogex.h"
+#include "Winsock.h"
+#include "windows.h"
+#include "time.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -59,6 +62,15 @@ CFTPClientDlg::CFTPClientDlg(CWnd* pParent /*=nullptr*/)
 void CFTPClientDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_Connect,	Connect);
+	DDX_Control(pDX, IDC_Refresh,	Refresh);
+	DDX_Control(pDX, IDC_Upload,	Upload);
+	DDX_Control(pDX, IDC_Download,	Download);
+	DDX_Control(pDX, IDC_Delete,	Delete);
+	DDX_Control(pDX, IDC_IPAddress,	IPAddress);
+	DDX_Control(pDX, IDC_Account,	Account);
+	DDX_Control(pDX, IDC_Password,	Password);
+	DDX_Control(pDX, IDC_LIST1,		ListBox);
 }
 
 BEGIN_MESSAGE_MAP(CFTPClientDlg, CDialogEx)
@@ -173,34 +185,60 @@ void CFTPClientDlg::OnBnClickedConnect()
 	GetDlgItemText(IDC_IPAddress, ipaddress);
 	GetDlgItemText(IDC_Account, account);
 	GetDlgItemText(IDC_Password, password);
-	this->OnConnect(ipaddress, account, password);
-	this->OnRefresh();
+	short status = OnConnect(ipaddress, account, password);
+	switch (status)
+	{
+	case 1:	 MessageBox("连接成功！"); OnRefresh(); break;
+	case 2:  MessageBox("用户名或密码错误！"); break;
+	default: MessageBox("连接失败！");
+	}
 }
 
 void CFTPClientDlg::OnBnClickedRefresh()
 {
-	this->OnRefresh();
+	OnRefresh() ? MessageBox("刷新成功！") : MessageBox("刷新失败！");
 }
 
 
 void CFTPClientDlg::OnBnClickedUpload()
 {
-	this->OnUpload();
-	this->OnRefresh();
+	if (OnUpload())
+	{
+		MessageBox("上传成功！");
+		OnRefresh();
+	}
+	else
+	{
+		MessageBox("上传失败！");
+	}
 }
 
 
 void CFTPClientDlg::OnBnClickedDownload()
 {
-	this->OnDownload();
-	this->OnRefresh();
+	if (OnDownload())
+	{
+		MessageBox("下载成功！");
+		OnRefresh();
+	}
+	else
+	{
+		MessageBox("下载失败！");
+	}
 }
 
 
 void CFTPClientDlg::OnBnClickedDelete()
 {
-	this->OnDelete();
-	this->OnRefresh();
+	if (OnDelete())
+	{
+		MessageBox("删除成功！");
+		OnRefresh();
+	}
+	else
+	{
+		MessageBox("删除失败！");
+	}
 }
 
 
@@ -212,27 +250,43 @@ void CFTPClientDlg::OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult)
 	*pResult = 0;
 }
 
-void CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString password)
+short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString password)
 {
 	// 沈大为完成
+	// 连接成功请返回1
+	// 账户密码错误请返回2
+	// 其他错误导致的连接失败请返回3
+	return 1;
 }
 
-void CFTPClientDlg::OnRefresh()
+bool CFTPClientDlg::OnRefresh()
 {
 	// 顾名扬完成
+	// 刷新成功请返回1
+	// 刷新失败请返回0
+	return 1;
 }
 
-void CFTPClientDlg::OnUpload()
+bool CFTPClientDlg::OnUpload()
 {
 	// 梁川完成
+	// 上传成功请返回1
+	// 上传失败请返回0
+	return 1;
 }
 
-void CFTPClientDlg::OnDownload()
+bool CFTPClientDlg::OnDownload()
 {
 	// 李睿哲完成
+	// 下载成功请返回1
+	// 下载失败请返回0
+	return 1;
 }
 
-void CFTPClientDlg::OnDelete()
+bool CFTPClientDlg::OnDelete()
 {
 	// 胡雅馨完成
+	// 删除成功请返回1
+	// 删除失败请返回0
+	return 1;
 }

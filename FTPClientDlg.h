@@ -49,9 +49,9 @@ public:
 	afx_msg void OnBnClickedDelete();
 	afx_msg void OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult);
 
-	void OnConnect(CString, CString, CString);
-	void OnRefresh();
-	void OnUpload();
-	void OnDownload();
-	void OnDelete();
+	short OnConnect(CString, CString, CString);
+	bool OnRefresh();
+	bool OnUpload();
+	bool OnDownload();
+	bool OnDelete();
 };

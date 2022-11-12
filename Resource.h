@@ -17,6 +17,8 @@
 #define IDC_Upload                      1006
 #define IDC_Connect                     1007
 #define IDC_LIST1                       1008
+#define IDC_LISTBOX                     1008
+#define IDC_LIST                        1008
 #define IDC_PROGRESS1                   1009
 
 // Next default values for new objects
