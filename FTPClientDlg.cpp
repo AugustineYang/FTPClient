@@ -356,8 +356,55 @@ short CFTPClientDlg::OnUpload()
 	// 未连接服务器请返回 CONNECTION_ERROR
 	// 上传成功请返回 SUCCESSFUL
 	// 上传失败请返回 FAILED
+	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
+	FILE* fd;
 	if (connected == false) { return CONNECTION_ERROR; }
-
+	else {
+		CString strname;
+		//弹出“打开”对话框
+		CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|", this);
+		if (file.DoModal() == IDOK)
+		{
+			strname = file.GetFileName();
+		}
+		else {
+			MessageBox("取消上传！");
+			return FAILED;
+		}
+		sprintf(sbuff, "SIZE %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
+		write(data_sock, sbuff, sizeof(sbuff));
+		read(data_sock, rbuff, sizeof(rbuff));
+		strncpy(cod, rbuff, 3);
+		if (cod == "150") {
+		//连接成功
+			fd = fopen(strname, "wb");//以二进制打开文件
+			if (fd) {
+				//打开成功
+				memset(sbuff, '\0', sizeof(sbuff));
+				while (1) { //从文件中循环读取数据并发送
+					//len用来实现进度条
+					int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
+					if (write(data_sock, sbuff, len) == SOCKET_ERROR) {
+						//closesocket(datatcps);要不要断开？
+						MessageBox("连接错误！");
+						return FAILED;
+					}
+					if (len < sizeof(sbuff)) {
+						break;//传输完成
+					}
+				}
+			}
+			else {
+				MessageBox("打开文件失败！");
+				return FAILED;
+			}
+		}
+		else {
+			MessageBox("连接错误！");
+			return FAILED;
+		}
+		
+	}
 
 	return SUCCESSFUL;
 }
