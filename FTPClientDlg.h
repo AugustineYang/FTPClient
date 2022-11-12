@@ -4,6 +4,11 @@
 
 #pragma once
 
+#define SUCCESSFUL 1
+#define CONNECTION_ERROR 2
+#define FAILED 3
+#define FAILED_TYPE_1 4
+#define FAILED_TYPE_2 5
 
 // CFTPClientDlg 对话框
 class CFTPClientDlg : public CDialogEx
@@ -50,8 +55,12 @@ public:
 	afx_msg void OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult);
 
 	short OnConnect(CString, CString, CString);
-	bool OnRefresh();
-	bool OnUpload();
-	bool OnDownload();
-	bool OnDelete();
+	short OnDisconnect();
+	short OnRefresh();
+	short OnUpload();
+	short OnDownload();
+	short OnDelete();
+
+	bool connected; //全局变量，记录是否连接到服务器上
+	SOCKET control_sock;
 };

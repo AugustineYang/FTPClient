@@ -10,6 +10,12 @@
 #include "Winsock.h"
 #include "windows.h"
 #include "time.h"
+#include "stdio.h"
+#include "stdlib.h"
+#include "io.h"
+
+#pragma comment(lib, "wsock32.lib")
+#pragma warning(disable:4996)
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -57,6 +63,7 @@ CFTPClientDlg::CFTPClientDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_FTPCLIENT_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	connected = false;
 }
 
 void CFTPClientDlg::DoDataExchange(CDataExchange* pDX)
@@ -179,65 +186,120 @@ void CFTPClientDlg::OnLbnSelchangeList1()
 
 void CFTPClientDlg::OnBnClickedConnect()
 {
-	CString ipaddress;
-	CString account;
-	CString password;
-	GetDlgItemText(IDC_IPAddress, ipaddress);
-	GetDlgItemText(IDC_Account, account);
-	GetDlgItemText(IDC_Password, password);
-	short status = OnConnect(ipaddress, account, password);
-	switch (status)
+	if (connected == false)
 	{
-	case 1:	 MessageBox("连接成功！"); OnRefresh(); break;
-	case 2:  MessageBox("用户名或密码错误！"); break;
-	default: MessageBox("连接失败！");
+		CString ipaddress;
+		CString account;
+		CString password;
+		GetDlgItemText(IDC_IPAddress, ipaddress);
+		GetDlgItemText(IDC_Account, account);
+		GetDlgItemText(IDC_Password, password);
+		short status = OnConnect(ipaddress, account, password);
+		if (status == SUCCESSFUL)
+		{
+			MessageBox("连接成功！");
+			GetDlgItem(IDC_Connect)->SetWindowText("断开连接");
+			connected = true;
+			OnRefresh();
+		}
+		else if (status == FAILED_TYPE_1)
+		{
+			MessageBox("用户名或密码错误！");
+		}
+		else
+		{
+			MessageBox("连接失败，请检查IP地址或网络连接！");
+		}
 	}
+	else
+	{
+		short status = OnDisconnect();
+		if (status == SUCCESSFUL)
+		{
+			MessageBox("断开连接成功！");
+			GetDlgItem(IDC_Connect)->SetWindowText("连接");
+			connected = false;
+			ListBox.ResetContent();
+		}
+		else
+		{
+			MessageBox("断开连接失败！");
+		}
+	}
+	
 }
 
 void CFTPClientDlg::OnBnClickedRefresh()
 {
-	OnRefresh() ? MessageBox("刷新成功！") : MessageBox("刷新失败！");
+	short status = OnRefresh();
+	if (status == SUCCESSFUL)
+	{
+		MessageBox("刷新成功！");
+	}
+	else if (status == FAILED)
+	{
+		MessageBox("刷新失败！");
+	}
+	else
+	{
+		MessageBox("请先连接FTP服务器！");
+	}
 }
 
 
 void CFTPClientDlg::OnBnClickedUpload()
 {
-	if (OnUpload())
+	short status = OnUpload();
+	if (status == SUCCESSFUL)
 	{
 		MessageBox("上传成功！");
 		OnRefresh();
 	}
-	else
+	else if(status == FAILED)
 	{
 		MessageBox("上传失败！");
+	}
+	else
+	{
+		MessageBox("请先连接FTP服务器！");
 	}
 }
 
 
 void CFTPClientDlg::OnBnClickedDownload()
 {
-	if (OnDownload())
+	short status = OnDownload();
+	if (status == SUCCESSFUL)
 	{
 		MessageBox("下载成功！");
 		OnRefresh();
 	}
-	else
+	else if(status == FAILED)
 	{
 		MessageBox("下载失败！");
+	}
+	else
+	{
+		MessageBox("请先连接FTP服务器！");
 	}
 }
 
 
 void CFTPClientDlg::OnBnClickedDelete()
 {
-	if (OnDelete())
+	short status = OnDelete();
+	if (status == SUCCESSFUL)
 	{
 		MessageBox("删除成功！");
 		OnRefresh();
 	}
-	else
+	else if(status == FAILED)
 	{
 		MessageBox("删除失败！");
+	}
+	else
+	{
+		MessageBox("请先连接FTP服务器！");
 	}
 }
 
@@ -253,40 +315,73 @@ void CFTPClientDlg::OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult)
 short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString password)
 {
 	// 沈大为完成
-	// 连接成功请返回1
-	// 账户密码错误请返回2
-	// 其他错误导致的连接失败请返回3
-	return 1;
+	// 连接成功请返回 SUCCESSFUL
+	// 账户密码错误请返回 FAILED_TYPE_1
+	// 其他错误导致的连接失败请返回 FAILED_TYPE_2
+	return SUCCESSFUL;
 }
 
-bool CFTPClientDlg::OnRefresh()
+short CFTPClientDlg::OnDisconnect()
+{
+	// 断连成功返回 SUCCESSFUL
+	// 断连失败返回 FAILED
+	char send_buf[100], read_buf[100];
+	int read_len = 100;
+	sprintf(send_buf, "QUIT\r\n");
+	write(control_sock, send_buf, strlen(send_buf));
+	read(control_sock, read_buf, read_len);
+	if (strncmp(read_buf, "221", 3) == 0)
+	{
+		close(control_sock);
+		return SUCCESSFUL;
+	}
+	else return FAILED;
+}
+
+short CFTPClientDlg::OnRefresh()
 {
 	// 顾名扬完成
-	// 刷新成功请返回1
-	// 刷新失败请返回0
-	return 1;
+	// 未连接服务器请返回 CONNECTION_ERROR
+	// 刷新成功请返回 SUCCESSFUL
+	// 刷新失败请返回 FAILED
+	if (connected == false) { return CONNECTION_ERROR; }
+
+
+	return SUCCESSFUL;
 }
 
-bool CFTPClientDlg::OnUpload()
+short CFTPClientDlg::OnUpload()
 {
 	// 梁川完成
-	// 上传成功请返回1
-	// 上传失败请返回0
-	return 1;
+	// 未连接服务器请返回 CONNECTION_ERROR
+	// 上传成功请返回 SUCCESSFUL
+	// 上传失败请返回 FAILED
+	if (connected == false) { return CONNECTION_ERROR; }
+
+
+	return SUCCESSFUL;
 }
 
-bool CFTPClientDlg::OnDownload()
+short CFTPClientDlg::OnDownload()
 {
 	// 李睿哲完成
-	// 下载成功请返回1
-	// 下载失败请返回0
-	return 1;
+	// 未连接服务器请返回 CONNECTION_ERROR
+	// 下载成功请返回 SUCCESSFUL
+	// 下载失败请返回 FAILED
+	if (connected == false) { return CONNECTION_ERROR; }
+
+
+	return SUCCESSFUL;
 }
 
-bool CFTPClientDlg::OnDelete()
+short CFTPClientDlg::OnDelete()
 {
 	// 胡雅馨完成
-	// 删除成功请返回1
-	// 删除失败请返回0
-	return 1;
+	// 未连接服务器请返回 CONNECTION_ERROR
+	// 删除成功请返回 SUCCESSFUL
+	// 删除失败请返回 FAILED
+	if (connected == false) { return CONNECTION_ERROR; }
+
+
+	return SUCCESSFUL;
 }
