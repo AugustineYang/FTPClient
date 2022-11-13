@@ -380,8 +380,7 @@ short CFTPClientDlg::OnUpload()
 			strname = file.GetFileName();
 		}
 		else {
-			// MessageBox("取消上传！");
-			// return FAILED;
+			// 取消上传
 			return CANCELED;
 		}
 		sprintf(sbuff, "SIZE %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
