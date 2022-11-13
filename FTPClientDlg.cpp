@@ -255,13 +255,21 @@ void CFTPClientDlg::OnBnClickedUpload()
 		MessageBox("上传成功！");
 		OnRefresh();
 	}
-	else if(status == FAILED)
+	else if(status == FAILED_TYPE_1)
 	{
-		MessageBox("上传失败！");
+		MessageBox("网络连接错误！");
 	}
-	else
+	else if(status == FAILED_TYPE_2)
+	{
+		MessageBox("文件打开失败！");
+	}
+	else if (status == DISCONNECTED)
 	{
 		MessageBox("请先连接FTP服务器！");
+	}
+	else // status == CANCELED
+	{
+		// Do Nothing. 
 	}
 }
 
@@ -318,6 +326,7 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	// 连接成功请返回 SUCCESSFUL
 	// 账户密码错误请返回 FAILED_TYPE_1
 	// 其他错误导致的连接失败请返回 FAILED_TYPE_2
+	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedConnect的MessageBox
 	return SUCCESSFUL;
 }
 
@@ -341,10 +350,11 @@ short CFTPClientDlg::OnDisconnect()
 short CFTPClientDlg::OnRefresh()
 {
 	// 顾名扬完成
-	// 未连接服务器请返回 CONNECTION_ERROR
+	// 未连接服务器请返回 DISCONNECTED
 	// 刷新成功请返回 SUCCESSFUL
 	// 刷新失败请返回 FAILED
-	if (connected == false) { return CONNECTION_ERROR; }
+	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox
+	if (connected == false) { return DISCONNECTED; }
 
 
 	return SUCCESSFUL;
@@ -353,12 +363,14 @@ short CFTPClientDlg::OnRefresh()
 short CFTPClientDlg::OnUpload()
 {
 	// 梁川完成
-	// 未连接服务器请返回 CONNECTION_ERROR
+	// 未连接服务器请返回 DISCONNECTED
 	// 上传成功请返回 SUCCESSFUL
-	// 上传失败请返回 FAILED
+	// 连接错误请返回 FAILED_TYPE_1
+	// 打开文件失败返回 FAILED_TYPE_2
+	// 取消上传返回 CANCELED
 	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
 	FILE* fd;
-	if (connected == false) { return CONNECTION_ERROR; }
+	if (connected == false) { return DISCONNECTED; }
 	else {
 		CString strname;
 		//弹出“打开”对话框
@@ -368,8 +380,9 @@ short CFTPClientDlg::OnUpload()
 			strname = file.GetFileName();
 		}
 		else {
-			MessageBox("取消上传！");
-			return FAILED;
+			// MessageBox("取消上传！");
+			// return FAILED;
+			return CANCELED;
 		}
 		sprintf(sbuff, "SIZE %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
 		write(data_sock, sbuff, sizeof(sbuff));
@@ -385,23 +398,24 @@ short CFTPClientDlg::OnUpload()
 					//len用来实现进度条
 					int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
 					if (write(data_sock, sbuff, len) == SOCKET_ERROR) {
-						//closesocket(datatcps);要不要断开？
-						MessageBox("连接错误！");
-						return FAILED;
+						// closesocket(datatcps);要不要断开？
+						// 连接错误
+						return FAILED_TYPE_1;
 					}
 					if (len < sizeof(sbuff)) {
-						break;//传输完成
+						// closesocket(datatcps);要不要断开？
+						break; //传输完成
 					}
 				}
 			}
 			else {
-				MessageBox("打开文件失败！");
-				return FAILED;
+				// 打开文件失败
+				return FAILED_TYPE_2;
 			}
 		}
 		else {
-			MessageBox("连接错误！");
-			return FAILED;
+			// 连接错误
+			return FAILED_TYPE_1;
 		}
 		
 	}
@@ -412,10 +426,12 @@ short CFTPClientDlg::OnUpload()
 short CFTPClientDlg::OnDownload()
 {
 	// 李睿哲完成
-	// 未连接服务器请返回 CONNECTION_ERROR
+	// 未连接服务器请返回 DISCONNECTED
 	// 下载成功请返回 SUCCESSFUL
 	// 下载失败请返回 FAILED
-	if (connected == false) { return CONNECTION_ERROR; }
+	// 取消下载返回 CANCELED
+	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDownload的MessageBox
+	if (connected == false) { return DISCONNECTED; }
 
 
 	return SUCCESSFUL;
@@ -424,10 +440,11 @@ short CFTPClientDlg::OnDownload()
 short CFTPClientDlg::OnDelete()
 {
 	// 胡雅馨完成
-	// 未连接服务器请返回 CONNECTION_ERROR
+	// 未连接服务器请返回 DISCONNECTED
 	// 删除成功请返回 SUCCESSFUL
 	// 删除失败请返回 FAILED
-	if (connected == false) { return CONNECTION_ERROR; }
+	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDelete的MessageBox
+	if (connected == false) { return DISCONNECTED; }
 
 
 	return SUCCESSFUL;

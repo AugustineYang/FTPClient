@@ -5,10 +5,13 @@
 #pragma once
 
 #define SUCCESSFUL 1
-#define CONNECTION_ERROR 2
+#define DISCONNECTED 2
 #define FAILED 3
 #define FAILED_TYPE_1 4
 #define FAILED_TYPE_2 5
+#define FAILED_TYPE_3 6
+#define FAILED_TYPE_4 7
+#define CANCELED 8
 
 // CFTPClientDlg 对话框
 class CFTPClientDlg : public CDialogEx
@@ -62,7 +65,7 @@ public:
 	short OnDelete();
 
 	bool connected; //全局变量，记录是否连接到服务器上
-	SOCKET control_sock;//控制接口
-	SOCKET data_sock;//数据接口
+	SOCKET control_sock; //控制接口
+	SOCKET data_sock; //数据接口
 
 };
