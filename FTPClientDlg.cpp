@@ -369,6 +369,7 @@ short CFTPClientDlg::OnUpload()
 	// 打开文件失败返回 FAILED_TYPE_2
 	// 取消上传返回 CANCELED
 	SOCKET data_sock;//数据接口
+	struct sockaddr_in serv_data_addr;//数据接口地址
 	data_sock = 0;
 	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
 	FILE* fd;
@@ -376,7 +377,11 @@ short CFTPClientDlg::OnUpload()
 	else {
 		/*
 		该部分将数据接口与服务器连接，稍后完成
+		serv_data_addr.sin_family = AF_INET;  //使用IPv4地址
+		serv_data_addr.sin_addr.s_addr = inet_addr("127.0.0.1");//先随便写个ip
+		serv_data_addr.sin_port = htons(1234);  //端口
 		*/
+		
 		CString strname;
 		//弹出“打开”对话框
 		CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|", this);
