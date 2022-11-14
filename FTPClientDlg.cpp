@@ -369,6 +369,7 @@ short CFTPClientDlg::OnUpload()
 	// 打开文件失败返回 FAILED_TYPE_2
 	// 取消上传返回 CANCELED
 	SOCKET data_sock;//数据接口
+	data_sock = 0;
 	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
 	FILE* fd;
 	if (connected == false) { return DISCONNECTED; }
