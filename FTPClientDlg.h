@@ -66,6 +66,6 @@ public:
 
 	bool connected; //全局变量，记录是否连接到服务器上
 	SOCKET control_sock; //控制接口
-	SOCKET data_sock; //数据接口
+	//SOCKET data_sock; //数据接口
 
 };
