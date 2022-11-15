@@ -305,7 +305,11 @@ void CFTPClientDlg::OnBnClickedDelete()
 		MessageBox("删除成功！");
 		OnRefresh();
 	}
-	else if(status == FAILED)
+	else if(status == FAILED_TYPE_1)
+	{
+		MessageBox("文件不存在！");
+	}
+	else if (status == FAILED_TYPE_2)
 	{
 		MessageBox("删除失败！");
 	}
@@ -482,7 +486,22 @@ short CFTPClientDlg::OnDelete()
 	// 删除失败请返回 FAILED
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDelete的MessageBox
 	if (connected == false) { return DISCONNECTED; }
+	else
+	{
+		CString selfile;
+		ListBox.GetText(ListBox.GetCurSel(), selfile);//获取用户要删除的资源名
+		char* filename = (LPSTR)(LPCTSTR)selfile;
 
+		FILE* fh = fopen(filename, "r");
+		if (fh == NULL) return FAILED_TYPE_1;//文件不存在删除失败
+		else//文件存在，进行删除
+		{
+			fclose(fh);
+			int result = remove(filename);
+			if (result == 0) return SUCCESSFUL;
+			else return FAILED_TYPE_2;
+		}
+	}
 
 	return SUCCESSFUL;
 }
