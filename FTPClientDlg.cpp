@@ -13,6 +13,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "io.h"
+#include "afxinet.h"//添加
 
 #pragma comment(lib, "wsock32.lib")
 #pragma warning(disable:4996)
@@ -20,6 +21,9 @@
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+CInternetSession* pInetSession;//顾名扬添加
+CFtpConnection* pFtpConnection;//顾名扬添加
 
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
@@ -236,13 +240,13 @@ void CFTPClientDlg::OnBnClickedRefresh()
 	{
 		MessageBox("刷新成功！");
 	}
-	else if (status == FAILED)
+	else if (status == DISCONNECTED)
 	{
-		MessageBox("刷新失败！");
+		MessageBox("请先连接FTP服务器！");
 	}
 	else
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox("刷新失败！");
 	}
 }
 
@@ -352,11 +356,35 @@ short CFTPClientDlg::OnRefresh()
 	// 顾名扬完成
 	// 未连接服务器请返回 DISCONNECTED
 	// 刷新成功请返回 SUCCESSFUL
-	// 刷新失败请返回 FAILED
-	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox
+	// 刷新失败请返回 FAILED          （还未解决）
+	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox  232行
 	if (connected == false) { return DISCONNECTED; }
-
-
+	ListBox.ResetContent();//清空显示方框内容
+	//创建一个CFtpFileFind实例
+	//在前面第26行已经添加了CFtpConnection* pFtpConnection;
+	CFtpFileFind ftpfind(pFtpConnection);
+	CString strdirpath;
+	pFtpConnection->GetCurrentDirectory(strdirpath);
+	//if (pFtpConnection->GetCurrentDirectory(strdirpath) == 0) { return FAILED; }
+	//找到第一个文件或者文件夹
+	BOOL bfind = ftpfind.FindFile(strdirpath);//判断文件目录是否存在
+	while (bfind)
+	{
+		bfind = ftpfind.FindNextFile();//用来遍历文件或目录时判断当前目录是否有下一个目录或者文件
+		CString strpath;
+		if (ftpfind.IsDots())
+			continue;
+		if (!ftpfind.IsDirectory())  //判断是否为目录
+		{
+			strpath = ftpfind.GetFileName(); //文件则读文件名
+			ListBox.AddString(strpath);
+		}
+		else
+		{
+			strpath = ftpfind.GetFilePath();
+			ListBox.AddString(strpath);
+		}
+	}
 	return SUCCESSFUL;
 }
 
