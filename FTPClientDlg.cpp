@@ -396,10 +396,20 @@ short CFTPClientDlg::OnUpload()
 	// 连接错误请返回 FAILED_TYPE_1
 	// 打开文件失败返回 FAILED_TYPE_2
 	// 取消上传返回 CANCELED
+	SOCKET data_sock;//数据接口
+	struct sockaddr_in serv_data_addr;//数据接口地址
+	data_sock = 0;
 	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
 	FILE* fd;
 	if (connected == false) { return DISCONNECTED; }
 	else {
+		/*
+		该部分将数据接口与服务器连接，稍后完成
+		serv_data_addr.sin_family = AF_INET;  //使用IPv4地址
+		serv_data_addr.sin_addr.s_addr = inet_addr("127.0.0.1");//先随便写个ip
+		serv_data_addr.sin_port = htons(1234);  //端口
+		*/
+		
 		CString strname;
 		//弹出“打开”对话框
 		CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|", this);
@@ -414,7 +424,7 @@ short CFTPClientDlg::OnUpload()
 		sprintf(sbuff, "SIZE %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
 		write(data_sock, sbuff, sizeof(sbuff));
 		read(data_sock, rbuff, sizeof(rbuff));
-		strncpy(cod, rbuff, 3);
+		strncpy(cod, rbuff, 3);//零终止符的问题？
 		if (cod == "150") {
 		//连接成功
 			fd = fopen(strname, "wb");//以二进制打开文件
