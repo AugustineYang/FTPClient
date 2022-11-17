@@ -367,6 +367,7 @@ short CFTPClientDlg::OnRefresh()
 	// 刷新失败请返回 FAILED         
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox  232行
 	SOCKET data_sock;
+	data_sock=0;
 	char rbuff[1024], sbuff[1024], cod[4];
 	char tmp[1024] = { 0 };
 	CString strdirpath;
