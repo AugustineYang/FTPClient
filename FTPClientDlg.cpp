@@ -22,8 +22,7 @@
 #define new DEBUG_NEW
 #endif
 
-CInternetSession* pInetSession;//顾名扬添加
-CFtpConnection* pFtpConnection;//顾名扬添加
+
 
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
@@ -244,6 +243,10 @@ void CFTPClientDlg::OnBnClickedRefresh()
 	{
 		MessageBox("请先连接FTP服务器！");
 	}
+	else if (status == FAILED_TYPE_1)
+	{
+		MessageBox("网络连接错误！");
+	}
 	else
 	{
 		MessageBox("刷新失败！");
@@ -360,36 +363,44 @@ short CFTPClientDlg::OnRefresh()
 	// 顾名扬完成
 	// 未连接服务器请返回 DISCONNECTED
 	// 刷新成功请返回 SUCCESSFUL
-	// 刷新失败请返回 FAILED          （还未解决）
+	// 存在连接错误请返回 FAILED_TYPE_1
+	// 刷新失败请返回 FAILED         
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox  232行
-	if (connected == false) { return DISCONNECTED; }
-	ListBox.ResetContent();//清空显示方框内容
-	//创建一个CFtpFileFind实例
-	//在前面第26行已经添加了CFtpConnection* pFtpConnection;
-	CFtpFileFind ftpfind(pFtpConnection);
+	SOCKET data_sock;
+	char rbuff[1024], sbuff[1024], cod[4];
+	char tmp[1024] = { 0 };
 	CString strdirpath;
-	pFtpConnection->GetCurrentDirectory(strdirpath);
-	//if (pFtpConnection->GetCurrentDirectory(strdirpath) == 0) { return FAILED; }
-	//找到第一个文件或者文件夹
-	BOOL bfind = ftpfind.FindFile(strdirpath);//判断文件目录是否存在
-	while (bfind)
-	{
-		bfind = ftpfind.FindNextFile();//用来遍历文件或目录时判断当前目录是否有下一个目录或者文件
-		CString strpath;
-		if (ftpfind.IsDots())
-			continue;
-		if (!ftpfind.IsDirectory())  //判断是否为目录
+	if (connected == false) { return DISCONNECTED; }
+	else if (cod != "125" && cod != "150") { return FAILED_TYPE_1; }
+	else {
+		sprintf(sbuff, "NLST %s\r\n", strdirpath);//NLST列出指定目录内容
+		write(data_sock, sbuff, sizeof(sbuff));
+		memset(rbuff, ' ', sizeof(rbuff));
+		recv(data_sock, rbuff, sizeof(rbuff), 0);
+		int lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
+		if (cod == "150")//连接成功
 		{
-			strpath = ftpfind.GetFileName(); //文件则读文件名
-			ListBox.AddString(strpath);
+			if (write(data_sock, sbuff, sizeof(sbuff)) == SOCKET_ERROR) { return FAILED_TYPE_1; }// 连接错误
+			if (lens == SOCKET_ERROR) { return FAILED; }// copy时候出错
+			if (lens == 0 ) { return FAILED; }//没有成功接收数据
+			while(lens != SOCKET_ERROR && lens != 0) {//接收残余数据
+				lens = recv(data_sock, tmp, sizeof(tmp), 0);
+				if (lens != 0 && lens != SOCKET_ERROR) 
+				{
+					strcat(rbuff, tmp);
+					memset(tmp,0,sizeof(tmp));
+				}	
+			}
+			ListBox.AddString(rbuff);	
 		}
-		else
+		else // 连接错误
 		{
-			strpath = ftpfind.GetFilePath();
-			ListBox.AddString(strpath);
+			return FAILED_TYPE_1;
 		}
 	}
+	
 	return SUCCESSFUL;
+
 }
 
 short CFTPClientDlg::OnUpload()
@@ -454,10 +465,7 @@ short CFTPClientDlg::OnUpload()
 				return FAILED_TYPE_2;
 			}
 		}
-		else {
-			// 连接错误
-			return FAILED_TYPE_1;
-		}
+		
 		
 	}
 
