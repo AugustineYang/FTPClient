@@ -432,13 +432,15 @@ short CFTPClientDlg::OnUpload()
 	// 连接错误请返回 FAILED_TYPE_1
 	// 打开文件失败返回 FAILED_TYPE_2
 	// 取消上传返回 CANCELED
+	int bcnt;//字节数
+	int len;
 	SOCKET data_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	struct sockaddr_in serv_data_addr;//数据接口地址
 	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
 	FILE* fd;
 	if (connected == false) { return DISCONNECTED; }
 	else {
-		sprintf(sbuff, "PASV\r\n");
+		sprintf(sbuff, "PASV\r\n");//进入被动模式
 		write(control_sock, sbuff, sizeof(sbuff));
 		read(control_sock，rbuff, sizeof(rbuff));
 		strncpy(cod, rbuff, 3);
@@ -467,9 +469,9 @@ short CFTPClientDlg::OnUpload()
 		strcat_s(serv_addr, ".");
 		strcat_s(serv_addr, part[3]);
 		serv_data_addr.sin_family = AF_INET;  //使用IPv4地址
-		serv_data_addr.sin_addr.s_addr = inet_addr(serv_addr);//先随便写个ip
+		serv_data_addr.sin_addr.s_addr = inet_addr(serv_addr);//ip
 		serv_data_addr.sin_port = htons(ServerPort);  //端口
-		int iconnect = connect(data_socket, (SOCKADDR*)&serv_data_addr, sizeof(SOCKADDR));//数据socket连接
+		int iconnect = connect(data_socket, (SOCKADDR*)&serv_data_addr, sizeof(SOCKADDR));//数据socket是否连接成功
 		if (iconnect == SOCKET_ERROR) {
 			return return FAILED_TYPE_1;
 		}
@@ -486,33 +488,97 @@ short CFTPClientDlg::OnUpload()
 			return CANCELED;
 		}
 		sprintf(sbuff, "SIZE %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
-		write(data_sock, sbuff, sizeof(sbuff));
+		memset(sbuff, 0, sizeof(sbuff));
+		memset(rbuff, 0, sizeof(rbuff));
+		write(data_sock, sbuff, sizeof(sbuff));//查看服务器中是否有该文件，若有则说明已经上传或传输中断
 		read(data_sock, rbuff, sizeof(rbuff));
-		strncpy(cod, rbuff, 3);//零终止符的问题？
-		cod[3] = '\0';
-		if (cod == "150") {
-		//连接成功
-			fd = fopen(strname, "wb");//以二进制打开文件
-			if (fd) {
-				//打开成功
-				memset(sbuff, '\0', sizeof(sbuff));
-				while (1) { //从文件中循环读取数据并发送
-					//len用来实现进度条
-					int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
-					if (write(data_sock, sbuff, len) == SOCKET_ERROR) {
-						// closesocket(datatcps);要不要断开？
-						// 连接错误
-						return FAILED_TYPE_1;
+		part[0]=strtok(rbuff, " ");
+		part[1] = strtok(NULL, " ");
+		if (part[0] == "213" && atoi(part[1]) > 0) {
+			//存在文件，断点续传
+			int foffset = atoi(part[1]);
+			memset(sbuff, 0, sizeof(sbuff));
+			memset(rbuff, 0, sizeof(rbuff));
+			sprintf(send_buf, "REST %ld\r\n", foffset);
+			write(data_sock, sbuff, sizeof(sbuff));//
+			read(data_sock, rbuff, sizeof(rbuff));
+			sprintf(send_buf, "STOR %s\r\n", strname);
+			write(data_sock, sbuff, sizeof(sbuff));//
+			read(data_sock, rbuff, sizeof(rbuff));
+			strncpy(cod, rbuff, 3);
+			cod[3] = '\0';
+			if (cod == "150") {
+				//连接成功
+				fd = fopen(strname, "wb");//以二进制打开文件
+				if (fd) {
+					//打开成功
+					memset(sbuff, '\0', sizeof(sbuff));
+					bcnt = 0;
+					len = 0;
+					while (1) { //从文件中循环读取数据并发送
+						//bcnt用来实现进度条
+						if (bcnt < foffset) {//已传部分则不发送
+							if ((bcnt + sizeof(sbuff)) > foffset) {
+								len=fread(sbuff, 1, foffset - bcnt, fd);
+							}
+							else {
+								len=fread(sbuff, 1, sizeof(sbuff), fd);
+							}
+							bnt += len;
+							continue;
+						}
+						else {
+							len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
+							bcnt += len;
+
+							if (write(data_sock, sbuff, len) == SOCKET_ERROR) {
+								// closesocket(datatcps);要不要断开？
+								// 连接错误
+								return FAILED_TYPE_1;
+							}
+							if (len < sizeof(sbuff)) {
+								closesocket(data_socket);//要不要断开？
+								break; //传输完成
+							}
+						}
+						
 					}
-					if (len < sizeof(sbuff)) {
-						// closesocket(datatcps);要不要断开？
-						break; //传输完成
-					}
+					return SUCCESSFUL;
+				}
+				else {
+					// 打开文件失败
+					return FAILED_TYPE_2;
 				}
 			}
-			else {
-				// 打开文件失败
-				return FAILED_TYPE_2;
+		}
+		else {
+			strncpy(cod, rbuff, 3);//零终止符的问题？
+			cod[3] = '\0';
+			if (cod == "150") {
+				//连接成功
+				fd = fopen(strname, "wb");//以二进制打开文件
+				if (fd) {
+					//打开成功
+					memset(sbuff, '\0', sizeof(sbuff));
+					while (1) { //从文件中循环读取数据并发送
+						//len用来实现进度条
+						int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
+						if (write(data_sock, sbuff, len) == SOCKET_ERROR) {
+							// closesocket(datatcps);要不要断开？
+							// 连接错误
+							return FAILED_TYPE_1;
+						}
+						if (len < sizeof(sbuff)) {
+							// closesocket(datatcps);要不要断开？
+							break; //传输完成
+						}
+					}
+					return SUCCESSFUL;
+				}
+				else {
+					// 打开文件失败
+					return FAILED_TYPE_2;
+				}
 			}
 		}
 		
