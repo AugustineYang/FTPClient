@@ -330,7 +330,7 @@ void CFTPClientDlg::OnBnClickedDelete()
 	}
 	else if(status == FAILED_TYPE_1)
 	{
-		MessageBox("文件不存在！");
+		MessageBox("SOCKET发送失败！");
 	}
 	else if (status == FAILED_TYPE_2)
 	{
@@ -670,22 +670,40 @@ short CFTPClientDlg::OnDelete()
 	// 删除成功请返回 SUCCESSFUL
 	// 删除失败请返回 FAILED
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDelete的MessageBox
+	SOCKET data_sock;
+	char rbuff[1024], sbuff[1024], cod[4];
 	if (connected == false) { return DISCONNECTED; }
 	else
 	{
 		CString selfile;
 		ListBox.GetText(ListBox.GetCurSel(), selfile);//获取用户要删除的资源名
 		char* filename = (LPSTR)(LPCTSTR)selfile;
-
-		FILE* fh = fopen(filename, "r");
-		if (fh == NULL) return FAILED_TYPE_1;//文件不存在删除失败
-		else//文件存在，进行删除
+		sprintf_s(sbuff, "RMD %s", filename);
+		int ret = send(control_sock, sbuff, strlen(sbuff), 0);
+		if (ret == -1)//SOCKET发送失败
+			return FAILED_TYPE_1;
+		memset(rbuff, '', sizeof(rbuff));
+		int len = recv(control_sock, rbuff, sizeof(rbuff), 0);
+		char tmp[1024] = { 0 };
+		while (len != SOCKET_ERROR && len != 0)
 		{
-			fclose(fh);
-			int result = remove(filename);
-			if (result == 0) return SUCCESSFUL;
-			else return FAILED_TYPE_2;
+			len = recv(control_sock, tmp, sizeof(tmp), 0);
+			if (len != SOCKET_ERROR && len != 0)
+			{
+				strcat(rbuff, tmp);
+				memset(tmp, 0, sizeof(tmp));
+			}
 		}
+		int code;
+		if (rbuff[0] > '9' || rbuff[0] < '0') code = -1;
+		else
+		{
+			std::_Invoker_strategy s(rbuff);
+			std::istringstream ss(s);
+			ss >> code;
+		}
+		if (code != 250) return FAILED_TYPE_2;
+
 	}
 
 	return SUCCESSFUL;
