@@ -432,19 +432,47 @@ short CFTPClientDlg::OnUpload()
 	// 连接错误请返回 FAILED_TYPE_1
 	// 打开文件失败返回 FAILED_TYPE_2
 	// 取消上传返回 CANCELED
-	SOCKET data_sock;//数据接口
+	SOCKET data_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	struct sockaddr_in serv_data_addr;//数据接口地址
-	data_sock = 0;
 	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
 	FILE* fd;
 	if (connected == false) { return DISCONNECTED; }
 	else {
-		/*
-		该部分将数据接口与服务器连接，稍后完成
+		sprintf(sbuff, "PASV\r\n");
+		write(control_sock, sbuff, sizeof(sbuff));
+		read(control_sock，rbuff, sizeof(rbuff));
+		strncpy(cod, rbuff, 3);
+		cod[3] = '\0';
+		if (cod != "227") {
+			return FAILED_TYPE_1;
+		}
+		char* part[6];
+		if (strtok(rbuff, "("))
+		{
+			for (int i = 0; i < 5; i++)
+			{
+				part[i] = strtok(NULL, ",");
+
+			}
+			part[5] = strtok(NULL, ")");
+		}
+		int ServerPort;
+		ServerPort = (atoi(part[4]) << 8) + atoi(part[5]);
+		char serv_addr[200];
+		strcat_s(serv_addr, part[0]);
+		strcat_s(serv_addr, ".");
+		strcat_s(serv_addr, part[1]);
+		strcat_s(serv_addr, ".");
+		strcat_s(serv_addr, part[2]);
+		strcat_s(serv_addr, ".");
+		strcat_s(serv_addr, part[3]);
 		serv_data_addr.sin_family = AF_INET;  //使用IPv4地址
-		serv_data_addr.sin_addr.s_addr = inet_addr("127.0.0.1");//先随便写个ip
-		serv_data_addr.sin_port = htons(1234);  //端口
-		*/
+		serv_data_addr.sin_addr.s_addr = inet_addr(serv_addr);//先随便写个ip
+		serv_data_addr.sin_port = htons(ServerPort);  //端口
+		int iconnect = connect(data_socket, (SOCKADDR*)&serv_data_addr, sizeof(SOCKADDR));//数据socket连接
+		if (iconnect == SOCKET_ERROR) {
+			return return FAILED_TYPE_1;
+		}
 		
 		CString strname;
 		//弹出“打开”对话框
@@ -461,6 +489,7 @@ short CFTPClientDlg::OnUpload()
 		write(data_sock, sbuff, sizeof(sbuff));
 		read(data_sock, rbuff, sizeof(rbuff));
 		strncpy(cod, rbuff, 3);//零终止符的问题？
+		cod[3] = '\0';
 		if (cod == "150") {
 		//连接成功
 			fd = fopen(strname, "wb");//以二进制打开文件
