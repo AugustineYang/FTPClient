@@ -436,7 +436,7 @@ short CFTPClientDlg::OnUpload()
 	// 取消上传返回 CANCELED
 	int bcnt;//字节数
 	int len;
-	SOCKET data_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	SOCKET data_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	struct sockaddr_in serv_data_addr;//数据接口地址
 	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
 	FILE* fd;
@@ -444,7 +444,7 @@ short CFTPClientDlg::OnUpload()
 	else {
 		sprintf(sbuff, "PASV\r\n");//进入被动模式
 		send(control_sock, sbuff, sizeof(sbuff),0);
-		recv(control_sock，rbuff, sizeof(rbuff),0);
+		recv(control_sock,rbuff, sizeof(rbuff),0);
 		strncpy(cod, rbuff, 3);
 		cod[3] = '\0';
 		if (cod != "227") {
@@ -473,9 +473,9 @@ short CFTPClientDlg::OnUpload()
 		serv_data_addr.sin_family = AF_INET;  //使用IPv4地址
 		serv_data_addr.sin_addr.s_addr = inet_addr(serv_addr);//ip
 		serv_data_addr.sin_port = htons(ServerPort);  //端口
-		int iconnect = connect(data_socket, (SOCKADDR*)&serv_data_addr, sizeof(SOCKADDR));//数据socket是否连接成功
+		int iconnect = connect(data_sock, (SOCKADDR*)&serv_data_addr, sizeof(SOCKADDR));//数据socket是否连接成功
 		if (iconnect == SOCKET_ERROR) {
-			return return FAILED_TYPE_1;
+			return FAILED_TYPE_1;
 		}
 		
 		CString strname;
@@ -501,10 +501,10 @@ short CFTPClientDlg::OnUpload()
 			int foffset = atoi(part[1]);
 			memset(sbuff, 0, sizeof(sbuff));
 			memset(rbuff, 0, sizeof(rbuff));
-			sprintf(send_buf, "REST %ld\r\n", foffset);
+			sprintf(sbuff, "REST %ld\r\n", foffset);
 			send(data_sock, sbuff, sizeof(sbuff),0);//
 			recv(data_sock, rbuff, sizeof(rbuff),0);
-			sprintf(send_buf, "STOR %s\r\n", strname);
+			sprintf(sbuff, "STOR %s\r\n", strname);
 			send(data_sock, sbuff, sizeof(sbuff),0);//
 			recv(data_sock, rbuff, sizeof(rbuff),0);
 			strncpy(cod, rbuff, 3);
@@ -526,7 +526,7 @@ short CFTPClientDlg::OnUpload()
 							else {
 								len=fread(sbuff, 1, sizeof(sbuff), fd);
 							}
-							bnt += len;
+							bcnt += len;
 							continue;
 						}
 						else {
@@ -539,7 +539,7 @@ short CFTPClientDlg::OnUpload()
 								return FAILED_TYPE_1;
 							}
 							if (len < sizeof(sbuff)) {
-								closesocket(data_socket);//要不要断开？
+								closesocket(data_sock);//要不要断开？
 								break; //传输完成
 							}
 						}
