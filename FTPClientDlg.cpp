@@ -360,6 +360,63 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	// 账户密码错误请返回 FAILED_TYPE_1
 	// 其他错误导致的连接失败请返回 FAILED_TYPE_2
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedConnect的MessageBox
+	int read_len = 0;
+		int sen_len = 0;
+		char read_buf[100];
+		char send_buf[100];
+		//定义服务端套接字，接受请求套接字
+		SOCKET s_server;
+		//服务端地址客户端地址
+		SOCKADDR_IN server_addr;
+		//初始化
+		WORD w_req = MAKEWORD(2, 2);//版本号
+		WSADATA wsadata;
+		int err;
+		err = WSAStartup(w_req, &wsadata);
+		if (err != 0) {
+			return FAILED_TYPE_2;
+		}
+
+		//检测版本号
+		if (LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wHighVersion) != 2) {
+			return FAILED_TYPE_2;             //套接字库版本号不符
+			WSACleanup();
+		}
+
+		//填充服务端信息
+		server_addr.sin_family = AF_INET;
+		server_addr.sin_addr.S_un.S_addr = inet_addr(ipaddress);
+		server_addr.sin_port = htons(4600);
+		//创建套接字
+		s_server = socket(AF_INET, SOCK_STREAM, 0);
+		if (connect(s_server, (SOCKADDR*)&server_addr, sizeof(SOCKADDR)) == SOCKET_ERROR) {
+			//服务器链接失败
+			WSACleanup();
+			return FAILED_TYPE_2;
+		}
+		bool flag1 = false;
+		bool flag2 = false;
+		do {
+			sprintf(send_buf, "USER %s\r\n", account);
+			write(control_sock, send_buf, strlen(send_buf));
+			if (read(control_sock, read_buf, read_len) == SOCKET_ERROR)
+				flag1 == true;
+			else break;
+		} while (flag1);
+		do{
+			sprintf(send_buf, "PASS %s\r\n", password);
+			write(control_sock, send_buf, strlen(send_buf));
+			if (read(control_sock, read_buf, read_len) == SOCKET_ERROR)
+				flag2 = true;
+			else break;
+		} while (flag2);
+		/* 客户端接收服务器的响应码和信息，正常为 ”331 User name okay, need password.” */
+		/* 客户端接收服务器的响应码和信息，正常为 ”230 User logged in, proceed.” */
+
+		//关闭套接字
+		closesocket(s_server);
+		//释放DLL资源
+		WSACleanup();
 	return SUCCESSFUL;
 }
 
