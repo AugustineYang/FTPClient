@@ -338,6 +338,10 @@ void CFTPClientDlg::OnBnClickedDelete()
 	}
 	else if (status == FAILED_TYPE_2)
 	{
+		MessageBox("SOCKET接收失败！");
+	}
+	else if (status == FAILED_TYPE_3)
+	{
 		MessageBox("删除失败！");
 	}
 	else
@@ -822,26 +826,9 @@ short CFTPClientDlg::OnDelete()
 			return FAILED_TYPE_1;
 		memset(rbuff, 0, sizeof(rbuff));
 		int len = recv(control_sock, rbuff, sizeof(rbuff), 0);
-		char tmp[1024] = { 0 };
-		while (len != SOCKET_ERROR && len != 0)
-		{
-			len = recv(control_sock, tmp, sizeof(tmp), 0);
-			if (len != SOCKET_ERROR && len != 0)
-			{
-				strcat(rbuff, tmp);
-				memset(tmp, 0, sizeof(tmp));
-			}
-		}
-		int code;
-		if (rbuff[0] > '9' || rbuff[0] < '0') code = -1;
-		else
-		{
-			std::_Invoker_strategy s(rbuff);
-			std::istringstream ss(s);
-			ss >> code;
-		}
-		if (code != 250) return FAILED_TYPE_2;
-
+		if (len == SOCKET_ERROR) return FAILED_TYPE_2;
+		strncpy(cod, rbuff, 3);
+		if (cod != "250") return FAILED_TYPE_3;
 	}
 
 	return SUCCESSFUL;
