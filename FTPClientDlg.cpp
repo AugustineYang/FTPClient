@@ -14,6 +14,7 @@
 #include "stdlib.h"
 #include "io.h"
 #include "afxinet.h"//添加
+#include "AfxSock.h"
 
 #pragma comment(lib, "wsock32.lib")
 #pragma warning(disable:4996)
@@ -66,6 +67,7 @@ CFTPClientDlg::CFTPClientDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_FTPCLIENT_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	AfxSocketInit();
 	connected = false;
 }
 
