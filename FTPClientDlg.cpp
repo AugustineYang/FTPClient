@@ -24,8 +24,6 @@
 #endif
 
 
-
-
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx
@@ -211,9 +209,13 @@ void CFTPClientDlg::OnBnClickedConnect()
 		{
 			MessageBox("用户名或密码错误！");
 		}
-		else
+		else if(status == FAILED_TYPE_2)
 		{
 			MessageBox("连接失败，请检查IP地址或网络连接！");
+		}
+		else
+		{
+			MessageBox("Socket服务错误！");
 		}
 	}
 	else
@@ -360,63 +362,41 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	// 账户密码错误请返回 FAILED_TYPE_1
 	// 其他错误导致的连接失败请返回 FAILED_TYPE_2
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedConnect的MessageBox
-	int read_len = 0;
-		int sen_len = 0;
-		char read_buf[100];
-		char send_buf[100];
-		//定义服务端套接字，接受请求套接字
-		SOCKET s_server;
-		//服务端地址客户端地址
-		SOCKADDR_IN server_addr;
-		//初始化
-		WORD w_req = MAKEWORD(2, 2);//版本号
-		WSADATA wsadata;
-		int err;
-		err = WSAStartup(w_req, &wsadata);
-		if (err != 0) {
-			return FAILED_TYPE_2;
-		}
+	char read_buf[BUFFER_SIZE], send_buf[BUFFER_SIZE];
+	memset(read_buf, 0, sizeof read_buf);
+	memset(send_buf, 0, sizeof send_buf);
+	int read_len = BUFFER_SIZE;
+	/* 初始化socket */
+	control_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (INVALID_SOCKET == control_sock)
+	{
+		return FAILED_TYPE_3;
+	}
+	struct sockaddr_in server;
+	memset(&server, 0, sizeof(struct sockaddr_in));
+	server.sin_family = AF_INET;
+	server.sin_addr.S_un.S_addr = inet_addr(ipaddress);
+	server.sin_port = htons(21);
+	if (SOCKET_ERROR == connect(control_sock, (struct sockaddr*)&server, sizeof(server)))
+	{
+		return FAILED_TYPE_2;
+	}
+	recv(control_sock, read_buf, read_len, 0);
 
-		//检测版本号
-		if (LOBYTE(wsadata.wVersion) != 2 || HIBYTE(wsadata.wHighVersion) != 2) {
-			return FAILED_TYPE_2;             //套接字库版本号不符
-			WSACleanup();
-		}
+	sprintf(send_buf, "USER %s\r\n", account);
+	send(control_sock, send_buf, strlen(send_buf), 0);
+	recv(control_sock, read_buf, read_len, 0);
 
-		//填充服务端信息
-		server_addr.sin_family = AF_INET;
-		server_addr.sin_addr.S_un.S_addr = inet_addr(ipaddress);
-		server_addr.sin_port = htons(4600);
-		//创建套接字
-		s_server = socket(AF_INET, SOCK_STREAM, 0);
-		if (connect(s_server, (SOCKADDR*)&server_addr, sizeof(SOCKADDR)) == SOCKET_ERROR) {
-			//服务器链接失败
-			WSACleanup();
-			return FAILED_TYPE_2;
-		}
-		bool flag1 = false;
-		bool flag2 = false;
-		do {
-			sprintf(send_buf, "USER %s\r\n", account);
-			write(control_sock, send_buf, strlen(send_buf));
-			if (read(control_sock, read_buf, read_len) == SOCKET_ERROR)
-				flag1 == true;
-			else break;
-		} while (flag1);
-		do{
-			sprintf(send_buf, "PASS %s\r\n", password);
-			write(control_sock, send_buf, strlen(send_buf));
-			if (read(control_sock, read_buf, read_len) == SOCKET_ERROR)
-				flag2 = true;
-			else break;
-		} while (flag2);
-		/* 客户端接收服务器的响应码和信息，正常为 ”331 User name okay, need password.” */
-		/* 客户端接收服务器的响应码和信息，正常为 ”230 User logged in, proceed.” */
+	sprintf(send_buf, "PASS %s\r\n", password);
+	send(control_sock, send_buf, strlen(send_buf), 0);
+	recv(control_sock, read_buf, read_len, 0);
 
-		//关闭套接字
-		closesocket(s_server);
-		//释放DLL资源
-		WSACleanup();
+	char code[3];
+	strncpy(code, read_buf, 3);
+	if (strncmp(code, "230", 3))
+	{
+		return FAILED_TYPE_1;
+	}
 	return SUCCESSFUL;
 }
 
@@ -424,14 +404,14 @@ short CFTPClientDlg::OnDisconnect()
 {
 	// 断连成功返回 SUCCESSFUL
 	// 断连失败返回 FAILED
-	char send_buf[100], read_buf[100];
-	int read_len = 100;
+	char send_buf[BUFFER_SIZE], read_buf[BUFFER_SIZE];
+	int read_len = BUFFER_SIZE;
 	sprintf(send_buf, "QUIT\r\n");
-	write(control_sock, send_buf, strlen(send_buf));
-	read(control_sock, read_buf, read_len);
+	send(control_sock, send_buf, strlen(send_buf), 0);
+	recv(control_sock, read_buf, read_len, 0);
 	if (strncmp(read_buf, "221", 3) == 0)
 	{
-		close(control_sock);
+		closesocket(control_sock);
 		return SUCCESSFUL;
 	}
 	else return FAILED;
@@ -838,7 +818,7 @@ short CFTPClientDlg::OnDelete()
 		int ret = send(control_sock, sbuff, strlen(sbuff), 0);
 		if (ret == -1)//SOCKET发送失败
 			return FAILED_TYPE_1;
-		memset(rbuff, '', sizeof(rbuff));
+		memset(rbuff, 0, sizeof(rbuff));
 		int len = recv(control_sock, rbuff, sizeof(rbuff), 0);
 		char tmp[1024] = { 0 };
 		while (len != SOCKET_ERROR && len != 0)

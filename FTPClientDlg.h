@@ -11,8 +11,10 @@
 #define FAILED_TYPE_2 5
 #define FAILED_TYPE_3 6
 #define FAILED_TYPE_4 7
-#define CANCELED 8
-#define FAILED_TYPE_5 9
+#define FAILED_TYPE_5 8
+#define CANCELED 9
+
+#define BUFFER_SIZE 1024
 
 // CFTPClientDlg 对话框
 class CFTPClientDlg : public CDialogEx
