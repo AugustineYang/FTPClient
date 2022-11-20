@@ -516,13 +516,15 @@ short CFTPClientDlg::OnUpload()
 		}
 		
 		CString sname;
-		USES_CONVERSION;
-		char* strname = T2A(sname);
+		char* strname;
 		//弹出“打开”对话框
-		CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|",this);
+		//CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|",this);
+		CFileDialog file(TRUE);
 		if (file.DoModal() == IDOK)
 		{
 			sname = file.GetFileName();
+			USES_CONVERSION;
+			strname = T2A(sname);
 		}
 		else {
 			// 取消上传
