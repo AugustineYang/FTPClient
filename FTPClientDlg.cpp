@@ -646,7 +646,7 @@ short CFTPClientDlg::OnDownload()
 	SOCKET data_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
 	char send_buf[1024] = {0};
 	char recv_buf[1024] = {0};
-	char cod[3] = {0};
+	char cod[4] = {0};
 	int recv_len = 1024;
 	if (connected == false) { return DISCONNECTED; }
 	else {
@@ -662,6 +662,7 @@ short CFTPClientDlg::OnDownload()
 		}
 		
 		memcpy(cod, recv_buf, 3);
+		cod[3] = '\0';
 		if (cod != "227") {
 			return FAILED_TYPE_3;
 		}
@@ -703,15 +704,17 @@ short CFTPClientDlg::OnDownload()
 		if (!selfile.IsEmpty())
 		{
 			
-			CFileDialog file(FALSE, NULL, selfile, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|", this);
+			CFileDialog file(FALSE);
 			if (file.DoModal() == IDOK)
 			{
-				CString strname;
-				strname = file.GetFileName();
-				CString strdir;
-				strdir = "";//这里填写本地目录位置
-				pFtpConnection->SetCurrentDirectory(strdir);
-				//获取文件大小
+				CString strpath;
+				strpath = file.GetPathName();//获取保存路径
+				CStdioFile strname;//文件
+				bool is_open = strname.Open(strpath, CFile::modeCreate | CFile::modeWrite | CFile::modeNoTruncate, NULL);
+				if (!is_open) {
+					return FAILED;
+				}
+				//文件成功打开
 				sprintf(send_buf,"SIZE %s\r\n",selfile);
 
 				send(control_sock, send_buf, strlen(send_buf), 0);
@@ -731,33 +734,36 @@ short CFTPClientDlg::OnDownload()
 				recv(control_sock, recv_buf, recv_len,0);
 
 				strncpy(cod, recv_buf, 3);
+				cod[3] = '\0';
 				if (cod == "150") {
-					FILE* op = NULL;
-					op = fopen(strname, "wb");//打开本地文件夹
+					//FILE* op = NULL;
+					//op = fopen(strname, "wb");//打开本地文件夹
 					int len = file_len;
 					int buf_len = recv(data_socket, recv_buf, recv_len, 0);
 					
 					for( len ; len > 0; len = len - buf_len)
 					{
 						if (buf_len < 0) {
-							
+							len = len + buf_len;
 							break;
 						}
 						if (buf_len == 0)
 							return FAILED_TYPE_5;
-						fwrite(&recv_buf, 1, recv_len-1, op);
+						//fwrite(&recv_buf, 1, recv_len-1, op);
+						strname.WriteString(recv_buf);
+						strname.SeekToEnd();
 						buf_len = recv(data_socket, recv_buf, recv_len, 0);
 
 					}
 					if (len <= 0) {
-						fclose(op);//关闭文件
+						strname.Close();//关闭文件
 						closesocket(data_socket);//关闭套接字
 						return SUCCESSFUL;
 					}
 					//进行断点续传
 					else {
-						fseek(op, 0, SEEK_END);  //先用fseek将文件指针移到文件末尾
-						int offset = ftell(op);
+						strname.SeekToEnd();  //先将文件指针移到文件末尾
+						int offset = file_len - len;
 						
 						sprintf(send_buf, "REST %ld\r\n", offset);
 
@@ -781,17 +787,18 @@ short CFTPClientDlg::OnDownload()
 							}
 							if (buf_len == 0)
 								return FAILED_TYPE_5;
-							fwrite(&recv_buf, 1, recv_len - 1, op);
+							strname.WriteString(recv_buf);
+							strname.SeekToEnd();
 							buf_len = recv(data_socket, recv_buf, recv_len, 0);
 
 						}
 						if (len <= 0) {
-							fclose(op);//关闭文件
+							strname.Close();//关闭文件
 							closesocket(data_socket);//关闭套接字
 							return SUCCESSFUL;
 						}
 						else {
-							fclose(op);//关闭文件
+							strname.Close();//关闭文件
 							closesocket(data_socket);//关闭套接字
 							return FAILED;
 						}
