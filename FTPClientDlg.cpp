@@ -71,6 +71,7 @@ CFTPClientDlg::CFTPClientDlg(CWnd* pParent /*=nullptr*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	AfxSocketInit();
 	connected = false;
+	
 }
 
 void CFTPClientDlg::DoDataExchange(CDataExchange* pDX)
@@ -379,14 +380,10 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	{
 		return FAILED_TYPE_3;
 	}
-	USES_CONVERSION;
-	char* ip;
-	
-	ip = T2A(ipaddress);
 	struct sockaddr_in server;
 	memset(&server, 0, sizeof(struct sockaddr_in));
 	server.sin_family = AF_INET;
-	server.sin_addr.S_un.S_addr = inet_addr(ip);
+	server.sin_addr.S_un.S_addr = inet_addr(ipaddress);
 	server.sin_port = htons(21);
 	if (SOCKET_ERROR == connect(control_sock, (struct sockaddr*)&server, sizeof(server)))
 	{
@@ -435,7 +432,7 @@ short CFTPClientDlg::OnRefresh()
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox  232行
 	SOCKET data_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
 	struct sockaddr_in serv_data_addr;//数据接口地址
-	char rbuff[10240], sbuff[10240];
+	char rbuff[BUFFER_SIZE*10], sbuff[BUFFER_SIZE];
 	if (connected == false) { return DISCONNECTED; }
 	else {
 		ListBox.ResetContent(); //先清空box里原有的内容
@@ -483,18 +480,29 @@ short CFTPClientDlg::OnRefresh()
 		{
 			int lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
 			if (lens == 0) { return FAILED; }//没有成功接收数据
-
-			freopen("out.txt", "w", stdout);
-			std::cout << rbuff << std::endl;
-			fclose(stdout);
-			//到project所在的文件夹里找一个叫out.txt的文件，里面就是rbuff的内容
-			//研究一下MLSD返回的信息的格式
-			std::string str;
 			while (lens != SOCKET_ERROR && lens != 0) {//接收残余数据
-				str = rbuff;
-				int num = 0;//用来计算;个数
+				char* p = strtok(rbuff, "\r\n");
+				while (p)
+				{
+					char* pp = strstr(p, "; ");
+					ListBox.AddString(pp + 2);
+					p = strtok(NULL, "\r\n");
+				}
+				lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
+
+				/*
+				//另一种实现方式 by 顾名扬
+				std::string str = rbuff;
+				int num = 0;//用来计算个数
 				int index1 = 0;//用来查找文件名前面出现的空格
 				int index2 = 1;//用来查找文件名后面紧跟的下一个文件的type，从而截取中间的文件名
+				while ((index1 = str.find(" ", index1)) < str.length()) {
+					if((index2 = str.find("type=", index2)) < str.length()) {
+						std::string filename = str.substr(index1 + 1, index2 - index1 - 1);
+						char* file_name;
+						file_name = new char[filename.size() + 1];//filename只是用于中间格式转换的过渡
+						strcpy(file_name, filename.c_str());
+						ListBox.AddString(file_name);
 				while ((index1 = str.find(";", index1)) < str.length()) {
 					num++;
 					if (num % 3 == 0) {
@@ -503,25 +511,13 @@ short CFTPClientDlg::OnRefresh()
 							char* file_name;
 							file_name = new char[filename.size() + 1];//filename只是用于中间格式转换的过渡
 							strcpy(file_name, filename.c_str());
-							USES_CONVERSION;
-							;
-							CString fname = A2T(file_name);
-
-							ListBox.AddString(fname);
+							ListBox.AddString(file_name);
 						}
 					}
 					index1++;
+					index2++;
 				}
-				/*//特殊情况考虑最后一个文件名的输出
-				std::size_t pos_1ast_begin = str.find_last_of(" ");
-				std::size_t pos_1ast_end = str.length();
-			    std::string filename = str.substr(pos_1ast_begin + 1, pos_1ast_end - pos_1ast_begin - 1);
-				char* file_name;
-				file_name = new char[filename.size() + 1];
-				strcpy(file_name, filename.c_str());
-				ListBox.AddString(file_name);*/
-				lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
-
+				*/
 			}
 		}
 		else // 连接错误
@@ -594,8 +590,8 @@ short CFTPClientDlg::OnUpload()
 		if (file.DoModal() == IDOK)
 		{
 			sname = file.GetFileName();
-			USES_CONVERSION;
-			strname = T2A(sname);
+			//USES_CONVERSION;
+			//strname = T2A(sname);
 			//strname = "";
 		}
 		else {
@@ -699,8 +695,6 @@ short CFTPClientDlg::OnUpload()
 		
 		
 	}
-
-	return SUCCESSFUL;
 }
 
 short CFTPClientDlg::OnDownload()
@@ -781,7 +775,7 @@ short CFTPClientDlg::OnDownload()
 				strname = T2A(sname);
 				CString strdir;
 				strdir = "";//这里填写本地目录位置
-				//pFtpConnection->SetCurrentDirectory(strdir);
+				pFtpConnection->SetCurrentDirectory(strdir);
 				//获取文件大小
 				sprintf(send_buf,"SIZE %s\r\n",selfile);
 
