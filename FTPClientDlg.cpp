@@ -204,22 +204,22 @@ void CFTPClientDlg::OnBnClickedConnect()
 		short status = OnConnect(ipaddress, account, password);
 		if (status == SUCCESSFUL)
 		{
-			MessageBox("连接成功！");
-			GetDlgItem(IDC_Connect)->SetWindowText("断开连接");
+			MessageBox(_T("连接成功！")); 
+			GetDlgItem(IDC_Connect)->SetWindowText(_T("断开连接"));
 			connected = true;
 			OnRefresh();
 		}
 		else if (status == FAILED_TYPE_1)
 		{
-			MessageBox("用户名或密码错误！");
+			MessageBox(_T("用户名或密码错误！"));
 		}
 		else if(status == FAILED_TYPE_2)
 		{
-			MessageBox("连接失败，请检查IP地址或网络连接！");
+			MessageBox(_T("连接失败，请检查IP地址或网络连接！"));
 		}
 		else
 		{
-			MessageBox("Socket服务错误！");
+			MessageBox(_T("Socket服务错误！"));
 		}
 	}
 	else
@@ -227,14 +227,14 @@ void CFTPClientDlg::OnBnClickedConnect()
 		short status = OnDisconnect();
 		if (status == SUCCESSFUL)
 		{
-			MessageBox("断开连接成功！");
-			GetDlgItem(IDC_Connect)->SetWindowText("连接");
+			MessageBox(_T("断开连接成功！"));
+			GetDlgItem(IDC_Connect)->SetWindowText(_T("连接"));
 			connected = false;
 			ListBox.ResetContent();
 		}
 		else
 		{
-			MessageBox("断开连接失败！");
+			MessageBox(_T("断开连接失败！"));
 		}
 	}
 	
@@ -245,19 +245,19 @@ void CFTPClientDlg::OnBnClickedRefresh()
 	short status = OnRefresh();
 	if (status == SUCCESSFUL)
 	{
-		MessageBox("刷新成功！");
+		MessageBox(_T("刷新成功！"));
 	}
 	else if (status == DISCONNECTED)
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox(_T("请先连接FTP服务器！"));
 	}
 	else if (status == FAILED_TYPE_1)
 	{
-		MessageBox("网络连接错误！");
+		MessageBox(_T("网络连接错误！"));
 	}
 	else
 	{
-		MessageBox("刷新失败！");
+		MessageBox(_T("刷新失败！"));
 	}
 }
 
@@ -267,20 +267,20 @@ void CFTPClientDlg::OnBnClickedUpload()
 	short status = OnUpload();
 	if (status == SUCCESSFUL)
 	{
-		MessageBox("上传成功！");
+		MessageBox(_T("上传成功！"));
 		OnRefresh();
 	}
 	else if(status == FAILED_TYPE_1)
 	{
-		MessageBox("网络连接错误！");
+		MessageBox(_T("网络连接错误！"));
 	}
 	else if(status == FAILED_TYPE_2)
 	{
-		MessageBox("文件打开失败！");
+		MessageBox(_T("文件打开失败！"));
 	}
 	else if (status == DISCONNECTED)
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox(_T("请先连接FTP服务器！"));
 	}
 	else // status == CANCELED
 	{
@@ -294,36 +294,36 @@ void CFTPClientDlg::OnBnClickedDownload()
 	short status = OnDownload();
 	if (status == SUCCESSFUL)
 	{
-		MessageBox("下载成功！");
+		MessageBox(_T("下载成功！"));
 		OnRefresh();
 	}
 	else if(status == FAILED)
 	{
-		MessageBox("下载失败！");
+		MessageBox(_T("下载失败！"));
 	}
 	else if (status == FAILED_TYPE_1)
 	{
-		MessageBox("socket接收失败");
+		MessageBox(_T("socket接收失败"));
 	}
 	else if(status == FAILED_TYPE_2)
 	{
-		MessageBox("socket发送失败");
+		MessageBox(_T("socket发送失败"));
 	}
 	else if (status == FAILED_TYPE_3)
 	{
-		MessageBox("被动模式启动失败");
+		MessageBox(_T("被动模式启动失败"));
 	}
 	else if (status == FAILED_TYPE_4)
 	{
-		MessageBox("数据连接建立失败");
+		MessageBox(_T("数据连接建立失败"));
 	}
 	else if (status == FAILED_TYPE_5)
 	{
-		MessageBox("数据连接断开");
+		MessageBox(_T("数据连接断开"));
 	}
 	else
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox(_T("请先连接FTP服务器！"));
 	}
 }
 
@@ -333,24 +333,24 @@ void CFTPClientDlg::OnBnClickedDelete()
 	short status = OnDelete();
 	if (status == SUCCESSFUL)
 	{
-		MessageBox("删除成功！");
+		MessageBox(_T("删除成功！"));
 		OnRefresh();
 	}
 	else if(status == FAILED_TYPE_1)
 	{
-		MessageBox("SOCKET发送失败！");
+		MessageBox(_T("SOCKET发送失败！"));
 	}
 	else if (status == FAILED_TYPE_2)
 	{
-		MessageBox("SOCKET接收失败！");
+		MessageBox(_T("SOCKET接收失败！"));
 	}
 	else if (status == FAILED_TYPE_3)
 	{
-		MessageBox("删除失败！");
+		MessageBox(_T("删除失败！"));
 	}
 	else
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox(_T("请先连接FTP服务器！"));
 	}
 }
 
@@ -379,11 +379,14 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	{
 		return FAILED_TYPE_3;
 	}
-
+	USES_CONVERSION;
+	char* ip;
+	
+	ip = T2A(ipaddress);
 	struct sockaddr_in server;
 	memset(&server, 0, sizeof(struct sockaddr_in));
 	server.sin_family = AF_INET;
-	server.sin_addr.S_un.S_addr = inet_addr(ipaddress);
+	server.sin_addr.S_un.S_addr = inet_addr(ip);
 	server.sin_port = htons(21);
 	if (SOCKET_ERROR == connect(control_sock, (struct sockaddr*)&server, sizeof(server)))
 	{
@@ -500,7 +503,11 @@ short CFTPClientDlg::OnRefresh()
 							char* file_name;
 							file_name = new char[filename.size() + 1];//filename只是用于中间格式转换的过渡
 							strcpy(file_name, filename.c_str());
-							ListBox.AddString(file_name);
+							USES_CONVERSION;
+							;
+							CString fname = A2T(file_name);
+
+							ListBox.AddString(fname);
 						}
 					}
 					index1++;
@@ -588,8 +595,8 @@ short CFTPClientDlg::OnUpload()
 		{
 			sname = file.GetFileName();
 			USES_CONVERSION;
-			//strname = T2A(sname);
-			strname = "";
+			strname = T2A(sname);
+			//strname = "";
 		}
 		else {
 			// 取消上传
@@ -712,6 +719,7 @@ short CFTPClientDlg::OnDownload()
 	if (connected == false) { return DISCONNECTED; }
 	else {
 		//首先通过控制连接将服务器切换到被动模式
+		char* strname;
 		sprintf(send_buf, "PASV\r\n");
 		int isend = send(control_sock, send_buf, strlen(send_buf), 0);
 		if (isend == SOCKET_ERROR) {
@@ -764,11 +772,13 @@ short CFTPClientDlg::OnDownload()
 		if (!selfile.IsEmpty())
 		{
 			
-			CFileDialog file(FALSE, NULL, selfile, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|", this);
+			CFileDialog file(FALSE);
 			if (file.DoModal() == IDOK)
 			{
-				CString strname;
-				strname = file.GetFileName();
+				CString sname;
+				sname = file.GetFileName();
+				USES_CONVERSION;
+				strname = T2A(sname);
 				CString strdir;
 				strdir = "";//这里填写本地目录位置
 				//pFtpConnection->SetCurrentDirectory(strdir);
