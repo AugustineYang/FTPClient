@@ -16,6 +16,9 @@
 #include "afxinet.h"//添加
 #include "AfxSock.h"
 #include <iostream>
+#include "stdio.h"
+#include <cstring>
+#include <cstddef>
 
 #pragma comment(lib, "wsock32.lib")
 #pragma warning(disable:4996)
@@ -483,22 +486,33 @@ short CFTPClientDlg::OnRefresh()
 			fclose(stdout);
 			//到project所在的文件夹里找一个叫out.txt的文件，里面就是rbuff的内容
 			//研究一下MLSD返回的信息的格式
-
+			std::string str;
 			while (lens != SOCKET_ERROR && lens != 0) {//接收残余数据
-				ListBox.AddString(rbuff);
+				str = rbuff;
+				int index1 = 0;//用来查找文件名前面出现的空格
+				int index2 = 1;//用来查找文件名后面紧跟的下一个文件的type，从而截取中间的文件名
+				while ((index1 = str.find(" ", index1)) < str.length()) {
+					if((index2 = str.find("type=", index2)) < str.length()) {
+						std::string filename = str.substr(index1 + 1, index2 - index1 - 1);
+						char* file_name;
+						file_name = new char[filename.size() + 1];//filename只是用于中间格式转换的过渡
+						strcpy(file_name, filename.c_str());
+						ListBox.AddString(file_name);
+					}
+					index1++;
+					index2++;
+				}
+				//特殊情况考虑最后一个文件名的输出
+				std::size_t pos_1ast_begin = str.find_last_of(" ");
+				std::size_t pos_1ast_end = str.length();
+			    std::string filename = str.substr(pos_1ast_begin + 1, pos_1ast_end - pos_1ast_begin - 1);
+				char* file_name;
+				file_name = new char[filename.size() + 1];
+				strcpy(file_name, filename.c_str());
+				ListBox.AddString(file_name);
 				lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
 
 			}
-			/*
-			while(lens != SOCKET_ERROR && lens != 0) {//接收残余数据
-				lens = recv(data_sock, tmp, sizeof(tmp), 0);
-				if (lens != 0 && lens != SOCKET_ERROR)
-				{
-					strcat(rbuff, tmp);
-					memset(tmp,0,sizeof(tmp));
-				}
-			}
-			ListBox.AddString(rbuff);*/
 		}
 		else // 连接错误
 		{
