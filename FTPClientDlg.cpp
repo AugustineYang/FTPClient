@@ -15,6 +15,7 @@
 #include "io.h"
 #include "afxinet.h"//添加
 #include "AfxSock.h"
+#include <iostream>
 
 #pragma comment(lib, "wsock32.lib")
 #pragma warning(disable:4996)
@@ -367,15 +368,15 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	// 其他错误导致的连接失败请返回 FAILED_TYPE_2
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedConnect的MessageBox
 	char read_buf[BUFFER_SIZE], send_buf[BUFFER_SIZE];
-	memset(read_buf, 0, sizeof read_buf);
-	memset(send_buf, 0, sizeof send_buf);
-	int read_len = BUFFER_SIZE;
+	MEMSET(read_buf);
+	MEMSET(send_buf);
 	/* 初始化socket */
 	control_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == control_sock)
 	{
 		return FAILED_TYPE_3;
 	}
+
 	struct sockaddr_in server;
 	memset(&server, 0, sizeof(struct sockaddr_in));
 	server.sin_family = AF_INET;
@@ -385,19 +386,17 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	{
 		return FAILED_TYPE_2;
 	}
-	recv(control_sock, read_buf, read_len, 0);
+	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 
 	sprintf(send_buf, "USER %s\r\n", account);
 	send(control_sock, send_buf, strlen(send_buf), 0);
-	recv(control_sock, read_buf, read_len, 0);
+	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 
 	sprintf(send_buf, "PASS %s\r\n", password);
 	send(control_sock, send_buf, strlen(send_buf), 0);
-	recv(control_sock, read_buf, read_len, 0);
+	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 
-	char code[3];
-	strncpy(code, read_buf, 3);
-	if (strncmp(code, "230", 3))
+	if (strncmp(read_buf, "230", 3))
 	{
 		return FAILED_TYPE_1;
 	}
@@ -409,10 +408,9 @@ short CFTPClientDlg::OnDisconnect()
 	// 断连成功返回 SUCCESSFUL
 	// 断连失败返回 FAILED
 	char send_buf[BUFFER_SIZE], read_buf[BUFFER_SIZE];
-	int read_len = BUFFER_SIZE;
 	sprintf(send_buf, "QUIT\r\n");
 	send(control_sock, send_buf, strlen(send_buf), 0);
-	recv(control_sock, read_buf, read_len, 0);
+	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 	if (strncmp(read_buf, "221", 3) == 0)
 	{
 		closesocket(control_sock);
@@ -429,40 +427,85 @@ short CFTPClientDlg::OnRefresh()
 	// 存在连接错误请返回 FAILED_TYPE_1
 	// 刷新失败请返回 FAILED         
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox  232行
-	SOCKET data_sock;
-	data_sock=0;
-	char rbuff[1024], sbuff[1024], cod[4];
-	char tmp[1024] = { 0 };
-	CString strdirpath;
+	SOCKET data_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
+	struct sockaddr_in serv_data_addr;//数据接口地址
+	char rbuff[BUFFER_SIZE], sbuff[BUFFER_SIZE];
 	if (connected == false) { return DISCONNECTED; }
-	else if (cod != "125" && cod != "150") { return FAILED_TYPE_1; }
 	else {
-		sprintf(sbuff, "NLST %s\r\n", strdirpath);//NLST列出指定目录内容
-		write(data_sock, sbuff, sizeof(sbuff));
-		memset(rbuff, ' ', sizeof(rbuff));
-		recv(data_sock, rbuff, sizeof(rbuff), 0);
-		int lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
-		if (cod == "150")//连接成功
+		ListBox.ResetContent(); //先清空box里原有的内容
+		MEMSET(rbuff);
+		MEMSET(sbuff);
+		sprintf(sbuff, "PASV\r\n");//PASV进入被动模式
+		send(control_sock, sbuff, strlen(sbuff), 0);
+		recv(control_sock, rbuff, BUFFER_SIZE, 0);
+		if (strncmp(rbuff, "227", 3))
 		{
-			if (write(data_sock, sbuff, sizeof(sbuff)) == SOCKET_ERROR) { return FAILED_TYPE_1; }// 连接错误
-			if (lens == SOCKET_ERROR) { return FAILED; }// copy时候出错
-			if (lens == 0 ) { return FAILED; }//没有成功接收数据
+			return FAILED_TYPE_1;
+		}
+		char* part[6];
+		if (strtok(rbuff, "("))
+		{
+			for (int i = 0; i < 5; i++)
+			{
+				part[i] = strtok(NULL, ",");
+
+			}
+			part[5] = strtok(NULL, ")");
+		}
+		unsigned short ServerPort;   //获取服务器数据端口
+		ServerPort = unsigned short((atoi(part[4]) << 8) + atoi(part[5]));
+		char m_addr[200];
+		strcpy_s(m_addr, part[0]);
+		strcat_s(m_addr, ".");
+		strcat_s(m_addr, part[1]);
+		strcat_s(m_addr, ".");
+		strcat_s(m_addr, part[2]);
+		strcat_s(m_addr, ".");
+		strcat_s(m_addr, part[3]);
+		sockaddr_in serveraddr2;
+		serveraddr2.sin_family = AF_INET;
+		serveraddr2.sin_addr.s_addr = inet_addr(m_addr);
+		serveraddr2.sin_port = htons(ServerPort);
+		int iconnect = connect(data_sock, (SOCKADDR*)&serveraddr2, sizeof(SOCKADDR));//数据socket连接
+		if (iconnect == SOCKET_ERROR) { return FAILED_TYPE_1; }// 连接错误
+		
+		sprintf(sbuff, "MLSD\r\n");//MLSD是 LIST 命令的替代品，旨在标准化目录列表的格式
+		send(control_sock, sbuff, strlen(sbuff), 0);
+		recv(control_sock, rbuff, BUFFER_SIZE, 0);
+		recv(control_sock, rbuff, BUFFER_SIZE, 0);
+		if (!strncmp(rbuff, "226", 3))//连接成功
+		{
+			int lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
+			if (lens == 0) { return FAILED; }//没有成功接收数据
+
+			freopen("out.txt", "w", stdout);
+			std::cout << rbuff << std::endl;
+			fclose(stdout);
+			//到project所在的文件夹里找一个叫out.txt的文件，里面就是rbuff的内容
+			//研究一下MLSD返回的信息的格式
+
+			while (lens != SOCKET_ERROR && lens != 0) {//接收残余数据
+				ListBox.AddString(rbuff);
+				lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
+
+			}
+			/*
 			while(lens != SOCKET_ERROR && lens != 0) {//接收残余数据
 				lens = recv(data_sock, tmp, sizeof(tmp), 0);
-				if (lens != 0 && lens != SOCKET_ERROR) 
+				if (lens != 0 && lens != SOCKET_ERROR)
 				{
 					strcat(rbuff, tmp);
 					memset(tmp,0,sizeof(tmp));
-				}	
+				}
 			}
-			ListBox.AddString(rbuff);	
+			ListBox.AddString(rbuff);*/
 		}
 		else // 连接错误
 		{
 			return FAILED_TYPE_1;
 		}
 	}
-	
+
 	return SUCCESSFUL;
 
 }
@@ -528,7 +571,8 @@ short CFTPClientDlg::OnUpload()
 		{
 			sname = file.GetFileName();
 			USES_CONVERSION;
-			strname = T2A(sname);
+			//strname = T2A(sname);
+			strname = "";
 		}
 		else {
 			// 取消上传
@@ -710,7 +754,7 @@ short CFTPClientDlg::OnDownload()
 				strname = file.GetFileName();
 				CString strdir;
 				strdir = "";//这里填写本地目录位置
-				pFtpConnection->SetCurrentDirectory(strdir);
+				//pFtpConnection->SetCurrentDirectory(strdir);
 				//获取文件大小
 				sprintf(send_buf,"SIZE %s\r\n",selfile);
 
