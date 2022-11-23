@@ -339,14 +339,6 @@ void CFTPClientDlg::OnBnClickedDelete()
 	}
 	else if(status == FAILED_TYPE_1)
 	{
-		MessageBox(_T("SOCKET发送失败！"));
-	}
-	else if (status == FAILED_TYPE_2)
-	{
-		MessageBox(_T("SOCKET接收失败！"));
-	}
-	else if (status == FAILED_TYPE_3)
-	{
 		MessageBox(_T("删除失败！"));
 	}
 	else
@@ -878,23 +870,22 @@ short CFTPClientDlg::OnDelete()
 	// 删除失败请返回 FAILED
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDelete的MessageBox
 	SOCKET data_sock;
-	char rbuff[1024], sbuff[1024], cod[4];
+	char rbuff[1024], sbuff[1024];
 	if (connected == false) { return DISCONNECTED; }
 	else
 	{
 		CString selfile;
 		ListBox.GetText(ListBox.GetCurSel(), selfile);//获取用户要删除的资源名
 		char* filename = (LPSTR)(LPCTSTR)selfile;
-		sprintf_s(sbuff, "RMD %s", filename);
-		int ret = send(control_sock, sbuff, strlen(sbuff), 0);
-		if (ret == -1)//SOCKET发送失败
-			return FAILED_TYPE_1;
-		memset(rbuff, 0, sizeof(rbuff));
-		int len = recv(control_sock, rbuff, sizeof(rbuff), 0);
-		if (len == SOCKET_ERROR) return FAILED_TYPE_2;
-		strncpy(cod, rbuff, 3);
-		if (cod != "250") return FAILED_TYPE_3;
+		MEMSET(sbuff);
+		sprintf(sbuff, "DELE %s\r\n", filename);
+		send(control_sock, sbuff, strlen(sbuff), 0);
+		MEMSET(rbuff);
+		recv(control_sock, rbuff, sizeof(rbuff), 0);
+		if (strncmp(rbuff,"250",3)) return FAILED_TYPE_1;
 	}
 
 	return SUCCESSFUL;
 }
+
+	
