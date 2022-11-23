@@ -574,14 +574,14 @@ short CFTPClientDlg::OnUpload()
 			return FAILED_TYPE_1;
 		}
 		
-		CString sname;
-		char* strname;
+		CString strname;
+		//char* strname;
 		//弹出“打开”对话框
 		//CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|",this);
 		CFileDialog file(TRUE);
 		if (file.DoModal() == IDOK)
 		{
-			sname = file.GetFileName();
+			strname = file.GetFileName();
 			//USES_CONVERSION;
 			//strname = T2A(sname);
 			//strname = "";
@@ -761,13 +761,12 @@ short CFTPClientDlg::OnDownload()
 			CFileDialog file(FALSE);
 			if (file.DoModal() == IDOK)
 			{
-				CString sname;
-				sname = file.GetFileName();
-				USES_CONVERSION;
-				strname = T2A(sname);
+				CString strname;
+				strname = file.GetFileName();
+				
 				CString strdir;
 				strdir = "";//这里填写本地目录位置
-				pFtpConnection->SetCurrentDirectory(strdir);
+				//pFtpConnection->SetCurrentDirectory(strdir);
 				//获取文件大小
 				sprintf(send_buf,"SIZE %s\r\n",selfile);
 
