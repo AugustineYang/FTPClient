@@ -12,11 +12,12 @@
 #define FAILED_TYPE_3 6
 #define FAILED_TYPE_4 7
 #define FAILED_TYPE_5 8
+#define FAILED_TYPE_6 10
 #define CANCELED 9
 
 #define BUFFER_SIZE 1024
 
-#define MEMSET(x) memset(x, 0, sizeof x)
+#define MEMSET(x) memset(x, 0, sizeof (x))
 
 // CFTPClientDlg 对话框
 class CFTPClientDlg : public CDialogEx
