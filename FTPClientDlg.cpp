@@ -19,6 +19,7 @@
 #include "stdio.h"
 #include <cstring>
 #include <cstddef>
+#include<string>
 
 #pragma comment(lib, "wsock32.lib")
 #pragma warning(disable:4996)
@@ -27,7 +28,7 @@
 #define new DEBUG_NEW
 #endif
 
-
+using namespace std;
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx
@@ -543,21 +544,39 @@ short CFTPClientDlg::OnUpload()
 	// 取消上传返回 CANCELED
 	int bcnt;//字节数
 	int len;
-	SOCKET data_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+	SOCKET data_sock = socket(AF_INET, SOCK_STREAM, 0);;
 	struct sockaddr_in serv_data_addr;//数据接口地址
+	memset(&serv_data_addr, 0, sizeof(struct sockaddr_in));
 	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
 	FILE* fd;
 	if (connected == false) { return DISCONNECTED; }
 	else {
+		memset(sbuff, 0, sizeof(sbuff));
+		memset(rbuff, 0, sizeof(rbuff));
+		sprintf(sbuff, "TYPE A\r\n");//进入被动模式
+
+		send(control_sock, sbuff, sizeof(sbuff), 0);
+		recv(control_sock, rbuff, sizeof(rbuff), 0);
+		
+		memset(sbuff, 0, sizeof(sbuff));
+		memset(rbuff, 0, sizeof(rbuff));
 		sprintf(sbuff, "PASV\r\n");//进入被动模式
-		send(control_sock, sbuff, sizeof(sbuff),0);
-		recv(control_sock,rbuff, sizeof(rbuff),0);
+
+		send(control_sock, sbuff, sizeof(sbuff), 0);
+		recv(control_sock, rbuff, sizeof(rbuff), 0);
 		strncpy(cod, rbuff, 3);
 		cod[3] = '\0';
-		if (cod != "227") {
+		if (strcmp(cod, "227") != 0) {
 			return FAILED_TYPE_1;
 		}
 		char* part[6];
+		//char** part = new char* [6];
+		for (int i = 0; i < 5; i++)
+		{
+			part[i] = new char[10]();
+			memset(part[i], 0, 10);
+		}
+		//char* part[6];
 		if (strtok(rbuff, "("))
 		{
 			for (int i = 0; i < 5; i++)
@@ -569,7 +588,9 @@ short CFTPClientDlg::OnUpload()
 		}
 		int ServerPort;
 		ServerPort = (atoi(part[4]) << 8) + atoi(part[5]);
-		char serv_addr[200];
+		//string serv_addr;
+		//char* serv_addr = new char[200];
+		char serv_addr[200]="";
 		strcat_s(serv_addr, part[0]);
 		strcat_s(serv_addr, ".");
 		strcat_s(serv_addr, part[1]);
@@ -577,6 +598,7 @@ short CFTPClientDlg::OnUpload()
 		strcat_s(serv_addr, part[2]);
 		strcat_s(serv_addr, ".");
 		strcat_s(serv_addr, part[3]);
+		
 		serv_data_addr.sin_family = AF_INET;  //使用IPv4地址
 		serv_data_addr.sin_addr.s_addr = inet_addr(serv_addr);//ip
 		serv_data_addr.sin_port = htons(ServerPort);  //端口
@@ -601,98 +623,44 @@ short CFTPClientDlg::OnUpload()
 			// 取消上传
 			return CANCELED;
 		}
-		sprintf(sbuff, "SIZE %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
+		memset(rbuff, 0, sizeof(rbuff)); 
 		memset(sbuff, 0, sizeof(sbuff));
-		memset(rbuff, 0, sizeof(rbuff));
-		send(data_sock, sbuff, sizeof(sbuff),0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
-		recv(data_sock, rbuff, sizeof(rbuff),0);
-		part[0]=strtok(rbuff, " ");
-		part[1] = strtok(NULL, " ");
-		if (part[0] == "213" && atoi(part[1]) > 0) {
-			//存在文件，断点续传
-			int foffset = atoi(part[1]);
-			memset(sbuff, 0, sizeof(sbuff));
-			memset(rbuff, 0, sizeof(rbuff));
-			sprintf(sbuff, "REST %ld\r\n", foffset);
-			send(data_sock, sbuff, sizeof(sbuff),0);//
-			recv(data_sock, rbuff, sizeof(rbuff),0);
-			sprintf(sbuff, "STOR %s\r\n", strname);
-			send(data_sock, sbuff, sizeof(sbuff),0);//
-			recv(data_sock, rbuff, sizeof(rbuff),0);
-			strncpy(cod, rbuff, 3);
-			cod[3] = '\0';
-			if (cod == "150") {
-				//连接成功
-				fd = fopen(strname, "wb");//以二进制打开文件
-				if (fd) {
-					//打开成功
-					memset(sbuff, '\0', sizeof(sbuff));
-					bcnt = 0;
-					len = 0;
-					while (1) { //从文件中循环读取数据并发送
-						//bcnt用来实现进度条
-						if (bcnt < foffset) {//已传部分则不发送
-							if ((bcnt + sizeof(sbuff)) > foffset) {
-								len=fread(sbuff, 1, foffset - bcnt, fd);
-							}
-							else {
-								len=fread(sbuff, 1, sizeof(sbuff), fd);
-							}
-							bcnt += len;
-							continue;
-						}
-						else {
-							len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
-							bcnt += len;
-
-							if (send(data_sock, sbuff, len,0) == SOCKET_ERROR) {
-								// closesocket(datatcps);要不要断开？
-								// 连接错误
-								return FAILED_TYPE_1;
-							}
-							if (len < sizeof(sbuff)) {
-								closesocket(data_sock);//要不要断开？
-								break; //传输完成
-							}
-						}
-						
+		sprintf(sbuff, "STOR %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
+		
+		send(control_sock, sbuff, sizeof(sbuff),0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
+		recv(control_sock, rbuff, sizeof(rbuff),0);
+		strncpy(cod, rbuff, 3);//零终止符的问题？
+		cod[3] = '\0';
+		if (strcmp(cod , "150")==0) {
+			//连接成功
+			fd = fopen(strname, "rb");//以二进制打开文件
+			if (fd!=NULL) {
+				//打开成功
+				
+				while (1) { //从文件中循环读取数据并发送
+					//len用来实现进度条
+					memset(sbuff, 0, sizeof(sbuff));
+					int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
+					if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
+						// closesocket(datatcps);要不要断开？
+						// 连接错误
+						closesocket(data_sock);
+						return FAILED_TYPE_1;
 					}
-					return SUCCESSFUL;
+					if (len < sizeof(sbuff)) {
+						// closesocket(datatcps);要不要断开？
+						closesocket(data_sock);
+						break; //传输完成
+					}
 				}
-				else {
-					// 打开文件失败
-					return FAILED_TYPE_2;
-				}
+				memset(rbuff, 0, sizeof(rbuff));
+				
+				recv(control_sock, rbuff, sizeof(rbuff), 0);
+				return SUCCESSFUL;
 			}
-		}
-		else {
-			strncpy(cod, rbuff, 3);//零终止符的问题？
-			cod[3] = '\0';
-			if (cod == "150") {
-				//连接成功
-				fd = fopen(strname, "wb");//以二进制打开文件
-				if (fd) {
-					//打开成功
-					memset(sbuff, '\0', sizeof(sbuff));
-					while (1) { //从文件中循环读取数据并发送
-						//len用来实现进度条
-						int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
-						if (send(data_sock, sbuff, len,0) == SOCKET_ERROR) {
-							// closesocket(datatcps);要不要断开？
-							// 连接错误
-							return FAILED_TYPE_1;
-						}
-						if (len < sizeof(sbuff)) {
-							// closesocket(datatcps);要不要断开？
-							break; //传输完成
-						}
-					}
-					return SUCCESSFUL;
-				}
-				else {
-					// 打开文件失败
-					return FAILED_TYPE_2;
-				}
+			else {
+				// 打开文件失败
+				return FAILED_TYPE_2;
 			}
 		}
 		
