@@ -1,0 +1,17 @@
+type=file;modify=20221027140734;size=1779380; 2020300004005-gmy-homework2.pdf
+type=file;modify=20221106155320;size=1579242; 2020300004005-gmy-homework3.pdf
+type=file;modify=20221113072343;size=359024; Bertrand_Competition.pdf
+type=file;modify=20221113025547;size=10892947; ch1_game_static_complete_info_slides.pdf
+type=file;modify=20221115134246;size=51719043; ch2_game_dynamic_complete_info_slides.pdf
+type=file;modify=20221121153938;size=40625499; ch3_game_incomplete_info_slides_extended.pdf
+type=file;modify=20220927071717;size=1506706; game_hw1_2022fall.pdf
+type=file;modify=20221115071357;size=685900; game_hw1_2022fall_solution.pdf
+type=file;modify=20221015093139;size=1794898; game_hw2_2022fall.pdf
+type=file;modify=20221115075409;size=177242; game_hw2_2022fall_solution.pdf
+type=file;modify=20221106161629;size=849600; game_hw3_2022fall.pdf
+type=file;modify=20221115075506;size=55420; game_hw3_2022fall_solution.pdf
+type=file;modify=20221117154804;size=105184; game_hw4_2022fall.pdf
+type=file;modify=20221117154813;size=46765; game_hw4_2022fall_solution.pdf
+type=file;modify=20221115062503;size=503878; game_review_2022fall.pdf
+type=file;modify=20221014024942;size=25696; game_syllabus_2022fall.pdf
+

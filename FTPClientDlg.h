@@ -16,6 +16,8 @@
 
 #define BUFFER_SIZE 1024
 
+#define MEMSET(x) memset(x, 0, sizeof x)
+
 // CFTPClientDlg 对话框
 class CFTPClientDlg : public CDialogEx
 {

@@ -15,6 +15,10 @@
 #include "io.h"
 #include "afxinet.h"//添加
 #include "AfxSock.h"
+#include <iostream>
+#include "stdio.h"
+#include <cstring>
+#include <cstddef>
 
 #pragma comment(lib, "wsock32.lib")
 #pragma warning(disable:4996)
@@ -67,6 +71,7 @@ CFTPClientDlg::CFTPClientDlg(CWnd* pParent /*=nullptr*/)
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	AfxSocketInit();
 	connected = false;
+	
 }
 
 void CFTPClientDlg::DoDataExchange(CDataExchange* pDX)
@@ -200,22 +205,22 @@ void CFTPClientDlg::OnBnClickedConnect()
 		short status = OnConnect(ipaddress, account, password);
 		if (status == SUCCESSFUL)
 		{
-			MessageBox("连接成功！");
-			GetDlgItem(IDC_Connect)->SetWindowText("断开连接");
+			MessageBox(_T("连接成功！")); 
+			GetDlgItem(IDC_Connect)->SetWindowText(_T("断开连接"));
 			connected = true;
 			OnRefresh();
 		}
 		else if (status == FAILED_TYPE_1)
 		{
-			MessageBox("用户名或密码错误！");
+			MessageBox(_T("用户名或密码错误！"));
 		}
 		else if(status == FAILED_TYPE_2)
 		{
-			MessageBox("连接失败，请检查IP地址或网络连接！");
+			MessageBox(_T("连接失败，请检查IP地址或网络连接！"));
 		}
 		else
 		{
-			MessageBox("Socket服务错误！");
+			MessageBox(_T("Socket服务错误！"));
 		}
 	}
 	else
@@ -223,14 +228,14 @@ void CFTPClientDlg::OnBnClickedConnect()
 		short status = OnDisconnect();
 		if (status == SUCCESSFUL)
 		{
-			MessageBox("断开连接成功！");
-			GetDlgItem(IDC_Connect)->SetWindowText("连接");
+			MessageBox(_T("断开连接成功！"));
+			GetDlgItem(IDC_Connect)->SetWindowText(_T("连接"));
 			connected = false;
 			ListBox.ResetContent();
 		}
 		else
 		{
-			MessageBox("断开连接失败！");
+			MessageBox(_T("断开连接失败！"));
 		}
 	}
 	
@@ -241,19 +246,19 @@ void CFTPClientDlg::OnBnClickedRefresh()
 	short status = OnRefresh();
 	if (status == SUCCESSFUL)
 	{
-		MessageBox("刷新成功！");
+		MessageBox(_T("刷新成功！"));
 	}
 	else if (status == DISCONNECTED)
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox(_T("请先连接FTP服务器！"));
 	}
 	else if (status == FAILED_TYPE_1)
 	{
-		MessageBox("网络连接错误！");
+		MessageBox(_T("网络连接错误！"));
 	}
 	else
 	{
-		MessageBox("刷新失败！");
+		MessageBox(_T("刷新失败！"));
 	}
 }
 
@@ -263,20 +268,20 @@ void CFTPClientDlg::OnBnClickedUpload()
 	short status = OnUpload();
 	if (status == SUCCESSFUL)
 	{
-		MessageBox("上传成功！");
+		MessageBox(_T("上传成功！"));
 		OnRefresh();
 	}
 	else if(status == FAILED_TYPE_1)
 	{
-		MessageBox("网络连接错误！");
+		MessageBox(_T("网络连接错误！"));
 	}
 	else if(status == FAILED_TYPE_2)
 	{
-		MessageBox("文件打开失败！");
+		MessageBox(_T("文件打开失败！"));
 	}
 	else if (status == DISCONNECTED)
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox(_T("请先连接FTP服务器！"));
 	}
 	else // status == CANCELED
 	{
@@ -290,36 +295,36 @@ void CFTPClientDlg::OnBnClickedDownload()
 	short status = OnDownload();
 	if (status == SUCCESSFUL)
 	{
-		MessageBox("下载成功！");
+		MessageBox(_T("下载成功！"));
 		OnRefresh();
 	}
 	else if(status == FAILED)
 	{
-		MessageBox("下载失败！");
+		MessageBox(_T("下载失败！"));
 	}
 	else if (status == FAILED_TYPE_1)
 	{
-		MessageBox("socket接收失败");
+		MessageBox(_T("socket接收失败"));
 	}
 	else if(status == FAILED_TYPE_2)
 	{
-		MessageBox("socket发送失败");
+		MessageBox(_T("socket发送失败"));
 	}
 	else if (status == FAILED_TYPE_3)
 	{
-		MessageBox("被动模式启动失败");
+		MessageBox(_T("被动模式启动失败"));
 	}
 	else if (status == FAILED_TYPE_4)
 	{
-		MessageBox("数据连接建立失败");
+		MessageBox(_T("数据连接建立失败"));
 	}
 	else if (status == FAILED_TYPE_5)
 	{
-		MessageBox("数据连接断开");
+		MessageBox(_T("数据连接断开"));
 	}
 	else
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox(_T("请先连接FTP服务器！"));
 	}
 }
 
@@ -329,24 +334,16 @@ void CFTPClientDlg::OnBnClickedDelete()
 	short status = OnDelete();
 	if (status == SUCCESSFUL)
 	{
-		MessageBox("删除成功！");
+		MessageBox(_T("删除成功！"));
 		OnRefresh();
 	}
 	else if(status == FAILED_TYPE_1)
 	{
-		MessageBox("SOCKET发送失败！");
-	}
-	else if (status == FAILED_TYPE_2)
-	{
-		MessageBox("SOCKET接收失败！");
-	}
-	else if (status == FAILED_TYPE_3)
-	{
-		MessageBox("删除失败！");
+		MessageBox(_T("删除失败！"));
 	}
 	else
 	{
-		MessageBox("请先连接FTP服务器！");
+		MessageBox(_T("请先连接FTP服务器！"));
 	}
 }
 
@@ -367,9 +364,8 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	// 其他错误导致的连接失败请返回 FAILED_TYPE_2
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedConnect的MessageBox
 	char read_buf[BUFFER_SIZE], send_buf[BUFFER_SIZE];
-	memset(read_buf, 0, sizeof read_buf);
-	memset(send_buf, 0, sizeof send_buf);
-	int read_len = BUFFER_SIZE;
+	MEMSET(read_buf);
+	MEMSET(send_buf);
 	/* 初始化socket */
 	control_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == control_sock)
@@ -385,19 +381,17 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	{
 		return FAILED_TYPE_2;
 	}
-	recv(control_sock, read_buf, read_len, 0);
+	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 
 	sprintf(send_buf, "USER %s\r\n", account);
 	send(control_sock, send_buf, strlen(send_buf), 0);
-	recv(control_sock, read_buf, read_len, 0);
+	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 
 	sprintf(send_buf, "PASS %s\r\n", password);
 	send(control_sock, send_buf, strlen(send_buf), 0);
-	recv(control_sock, read_buf, read_len, 0);
+	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 
-	char code[3];
-	strncpy(code, read_buf, 3);
-	if (strncmp(code, "230", 3))
+	if (strncmp(read_buf, "230", 3))
 	{
 		return FAILED_TYPE_1;
 	}
@@ -409,10 +403,9 @@ short CFTPClientDlg::OnDisconnect()
 	// 断连成功返回 SUCCESSFUL
 	// 断连失败返回 FAILED
 	char send_buf[BUFFER_SIZE], read_buf[BUFFER_SIZE];
-	int read_len = BUFFER_SIZE;
 	sprintf(send_buf, "QUIT\r\n");
 	send(control_sock, send_buf, strlen(send_buf), 0);
-	recv(control_sock, read_buf, read_len, 0);
+	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 	if (strncmp(read_buf, "221", 3) == 0)
 	{
 		closesocket(control_sock);
@@ -429,40 +422,102 @@ short CFTPClientDlg::OnRefresh()
 	// 存在连接错误请返回 FAILED_TYPE_1
 	// 刷新失败请返回 FAILED         
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox  232行
-	SOCKET data_sock;
-	data_sock=0;
-	char rbuff[1024], sbuff[1024], cod[4];
-	char tmp[1024] = { 0 };
-	CString strdirpath;
+	SOCKET data_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
+	struct sockaddr_in serv_data_addr;//数据接口地址
+	char rbuff[BUFFER_SIZE*10], sbuff[BUFFER_SIZE];
 	if (connected == false) { return DISCONNECTED; }
-	else if (cod != "125" && cod != "150") { return FAILED_TYPE_1; }
 	else {
-		sprintf(sbuff, "NLST %s\r\n", strdirpath);//NLST列出指定目录内容
-		write(data_sock, sbuff, sizeof(sbuff));
-		memset(rbuff, ' ', sizeof(rbuff));
-		recv(data_sock, rbuff, sizeof(rbuff), 0);
-		int lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
-		if (cod == "150")//连接成功
+		ListBox.ResetContent(); //先清空box里原有的内容
+		MEMSET(rbuff);
+		MEMSET(sbuff);
+		sprintf(sbuff, "PASV\r\n");//PASV进入被动模式
+		send(control_sock, sbuff, strlen(sbuff), 0);
+		recv(control_sock, rbuff, BUFFER_SIZE, 0);
+		if (strncmp(rbuff, "227", 3))
 		{
-			if (write(data_sock, sbuff, sizeof(sbuff)) == SOCKET_ERROR) { return FAILED_TYPE_1; }// 连接错误
-			if (lens == SOCKET_ERROR) { return FAILED; }// copy时候出错
-			if (lens == 0 ) { return FAILED; }//没有成功接收数据
-			while(lens != SOCKET_ERROR && lens != 0) {//接收残余数据
-				lens = recv(data_sock, tmp, sizeof(tmp), 0);
-				if (lens != 0 && lens != SOCKET_ERROR) 
-				{
-					strcat(rbuff, tmp);
-					memset(tmp,0,sizeof(tmp));
-				}	
+			return FAILED_TYPE_1;
+		}
+		char* part[6];
+		if (strtok(rbuff, "("))
+		{
+			for (int i = 0; i < 5; i++)
+			{
+				part[i] = strtok(NULL, ",");
+
 			}
-			ListBox.AddString(rbuff);	
+			part[5] = strtok(NULL, ")");
+		}
+		unsigned short ServerPort;   //获取服务器数据端口
+		ServerPort = unsigned short((atoi(part[4]) << 8) + atoi(part[5]));
+		char m_addr[200];
+		strcpy_s(m_addr, part[0]);
+		strcat_s(m_addr, ".");
+		strcat_s(m_addr, part[1]);
+		strcat_s(m_addr, ".");
+		strcat_s(m_addr, part[2]);
+		strcat_s(m_addr, ".");
+		strcat_s(m_addr, part[3]);
+		sockaddr_in serveraddr2;
+		serveraddr2.sin_family = AF_INET;
+		serveraddr2.sin_addr.s_addr = inet_addr(m_addr);
+		serveraddr2.sin_port = htons(ServerPort);
+		int iconnect = connect(data_sock, (SOCKADDR*)&serveraddr2, sizeof(SOCKADDR));//数据socket连接
+		if (iconnect == SOCKET_ERROR) { return FAILED_TYPE_1; }// 连接错误
+		
+		sprintf(sbuff, "MLSD\r\n");//MLSD是 LIST 命令的替代品，旨在标准化目录列表的格式
+		send(control_sock, sbuff, strlen(sbuff), 0);
+		recv(control_sock, rbuff, BUFFER_SIZE, 0);
+		recv(control_sock, rbuff, BUFFER_SIZE, 0);
+		if (!strncmp(rbuff, "226", 3))//连接成功
+		{
+			int lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
+			if (lens == 0) { return FAILED; }//没有成功接收数据
+			while (lens != SOCKET_ERROR && lens != 0) {//接收残余数据
+				char* p = strtok(rbuff, "\r\n");
+				while (p)
+				{
+					char* pp = strstr(p, "; ");
+					ListBox.AddString(pp + 2);
+					p = strtok(NULL, "\r\n");
+				}
+				lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
+
+				/*
+				//另一种实现方式 by 顾名扬
+				std::string str = rbuff;
+				int num = 0;//用来计算个数
+				int index1 = 0;//用来查找文件名前面出现的空格
+				int index2 = 1;//用来查找文件名后面紧跟的下一个文件的type，从而截取中间的文件名
+				while ((index1 = str.find(" ", index1)) < str.length()) {
+					if((index2 = str.find("type=", index2)) < str.length()) {
+						std::string filename = str.substr(index1 + 1, index2 - index1 - 1);
+						char* file_name;
+						file_name = new char[filename.size() + 1];//filename只是用于中间格式转换的过渡
+						strcpy(file_name, filename.c_str());
+						ListBox.AddString(file_name);
+				while ((index1 = str.find(";", index1)) < str.length()) {
+					num++;
+					if (num % 3 == 0) {
+						if ((index2 = str.find("\r", index1)) < str.length()) {
+							std::string filename = str.substr(index1 + 2, index2 - index1 );
+							char* file_name;
+							file_name = new char[filename.size() + 1];//filename只是用于中间格式转换的过渡
+							strcpy(file_name, filename.c_str());
+							ListBox.AddString(file_name);
+						}
+					}
+					index1++;
+					index2++;
+				}
+				*/
+			}
 		}
 		else // 连接错误
 		{
 			return FAILED_TYPE_1;
 		}
 	}
-	
+
 	return SUCCESSFUL;
 
 }
@@ -519,16 +574,17 @@ short CFTPClientDlg::OnUpload()
 			return FAILED_TYPE_1;
 		}
 		
-		CString sname;
-		char* strname;
+		CString strname;
+		//char* strname;
 		//弹出“打开”对话框
 		//CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|",this);
 		CFileDialog file(TRUE);
 		if (file.DoModal() == IDOK)
 		{
-			sname = file.GetFileName();
-			USES_CONVERSION;
-			strname = T2A(sname);
+			strname = file.GetFileName();
+			//USES_CONVERSION;
+			//strname = T2A(sname);
+			//strname = "";
 		}
 		else {
 			// 取消上传
@@ -631,8 +687,6 @@ short CFTPClientDlg::OnUpload()
 		
 		
 	}
-
-	return SUCCESSFUL;
 }
 
 short CFTPClientDlg::OnDownload()
@@ -651,6 +705,7 @@ short CFTPClientDlg::OnDownload()
 	if (connected == false) { return DISCONNECTED; }
 	else {
 		//首先通过控制连接将服务器切换到被动模式
+		char* strname;
 		sprintf(send_buf, "PASV\r\n");
 		int isend = send(control_sock, send_buf, strlen(send_buf), 0);
 		if (isend == SOCKET_ERROR) {
@@ -715,6 +770,13 @@ short CFTPClientDlg::OnDownload()
 					return FAILED;
 				}
 				//文件成功打开
+				CString strname;
+				strname = file.GetFileName();
+				
+				CString strdir;
+				strdir = "";//这里填写本地目录位置
+				//pFtpConnection->SetCurrentDirectory(strdir);
+				//获取文件大小
 				sprintf(send_buf,"SIZE %s\r\n",selfile);
 
 				send(control_sock, send_buf, strlen(send_buf), 0);
@@ -820,23 +882,22 @@ short CFTPClientDlg::OnDelete()
 	// 删除失败请返回 FAILED
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDelete的MessageBox
 	SOCKET data_sock;
-	char rbuff[1024], sbuff[1024], cod[4];
+	char rbuff[1024], sbuff[1024];
 	if (connected == false) { return DISCONNECTED; }
 	else
 	{
 		CString selfile;
 		ListBox.GetText(ListBox.GetCurSel(), selfile);//获取用户要删除的资源名
 		char* filename = (LPSTR)(LPCTSTR)selfile;
-		sprintf_s(sbuff, "RMD %s", filename);
-		int ret = send(control_sock, sbuff, strlen(sbuff), 0);
-		if (ret == -1)//SOCKET发送失败
-			return FAILED_TYPE_1;
-		memset(rbuff, 0, sizeof(rbuff));
-		int len = recv(control_sock, rbuff, sizeof(rbuff), 0);
-		if (len == SOCKET_ERROR) return FAILED_TYPE_2;
-		strncpy(cod, rbuff, 3);
-		if (cod != "250") return FAILED_TYPE_3;
+		MEMSET(sbuff);
+		sprintf(sbuff, "DELE %s\r\n", filename);
+		send(control_sock, sbuff, strlen(sbuff), 0);
+		MEMSET(rbuff);
+		recv(control_sock, rbuff, sizeof(rbuff), 0);
+		if (strncmp(rbuff,"250",3)) return FAILED_TYPE_1;
 	}
 
 	return SUCCESSFUL;
 }
+
+	
