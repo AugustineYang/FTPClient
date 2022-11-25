@@ -929,6 +929,8 @@ short CFTPClientDlg::OnDownload()
 							/*strname.SeekToEnd();*/
 							off += buf_len;
 							MEMSET(recv_buf);
+							float percent = float(off) / float(file_len) * 100;
+							m_pro.SetPos(percent);
 							buf_len = recv(data_socket, recv_buf, recv_len, 0);
 						}
 						if (buf_len < 0) {
