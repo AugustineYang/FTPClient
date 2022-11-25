@@ -679,7 +679,8 @@ short CFTPClientDlg::OnDownload()
 	SOCKET data_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
 	char send_buf[1024] = {0};
 	char recv_buf[1024] = {0};
-	char cod[4] = {0};
+	MEMSET(recv_buf);
+	MEMSET(send_buf);
 	int recv_len = 1024;
 	if (connected == false) { return DISCONNECTED; }
 	else {
@@ -694,7 +695,9 @@ short CFTPClientDlg::OnDownload()
 		int isend = send(control_sock, send_buf, strlen(send_buf), 0);
 		if (isend == SOCKET_ERROR) {
 			return FAILED_TYPE_2;
+
 		}
+		MEMSET(recv_buf);
 		int irecv = recv(control_sock, recv_buf, recv_len, 0);
 		if (irecv == SOCKET_ERROR) {
 			return FAILED_TYPE_1;
@@ -753,7 +756,7 @@ short CFTPClientDlg::OnDownload()
 				CString strpath;
 				strpath = file.GetPathName();//获取保存路径
 				FILE* fd;
-				fd = fopen(selfile, "wb");
+				fd = fopen(strpath, "wb");
 				//CStdioFile strname;//文件
 				//bool is_open = strname.Open(strpath, CFile::modeCreate | CFile::modeWrite | CFile::modeNoTruncate, NULL);
 				if (!fd) {
@@ -789,6 +792,7 @@ short CFTPClientDlg::OnDownload()
 				if (!strncmp(recv_buf, "150", 3)) {
 					//FILE* op = NULL;
 					//op = fopen(strname, "wb");//打开本地文件夹
+
 					int len = file_len;
 					if (file_len == 0) {
 						return SUCCESSFUL;
@@ -810,60 +814,67 @@ short CFTPClientDlg::OnDownload()
 						off += buf_len;
 						MEMSET(recv_buf);
 						buf_len = recv(data_socket, recv_buf, recv_len, 0);
-
-						
-
+					}
+					if (buf_len <= 0) {
+						return FAILED;
 					}
 					if (off==file_len) {
 						//strname.Close();//关闭文件
+						MEMSET(recv_buf);
+						recv(control_sock, recv_buf, recv_len, 0);
 						fclose(fd);
 						closesocket(data_socket);//关闭套接字
 						return SUCCESSFUL;
 					}
 					//进行断点续传
-					//else {
-					//	strname.SeekToEnd();  //先将文件指针移到文件末尾
-					//	int offset = off;
-					//	
-					//	sprintf(send_buf, "REST %ld\r\n", offset);
+					else {
+						
+						int offset = off;
+						
+						sprintf(send_buf, "REST %ld\r\n", offset);
 
-					//	send(control_sock, send_buf, strlen(send_buf), 0);
+						send(control_sock, send_buf, strlen(send_buf), 0);
+						MEMSET(recv_buf);
+						recv(control_sock, recv_buf, recv_len, 0);
 
-					//	recv(control_sock, recv_buf, recv_len, 0);
+						sprintf(send_buf, "RETR %s\r\n", selfile);
 
-					//	sprintf(send_buf, "RETR %s\r\n", selfile);
+						send(control_sock, send_buf, strlen(send_buf), 0);
+						MEMSET(recv_buf);
+						recv(control_sock, recv_buf, recv_len, 0);
+						int len = file_len - offset;//继续传输
+						MEMSET(recv_buf);
+						int buf_len = recv(data_socket, recv_buf, recv_len, 0);
 
-					//	send(control_sock, send_buf, strlen(send_buf), 0);
+						while (buf_len > 0)
+						{
 
-					//	recv(control_sock, recv_buf, recv_len, 0);
-					//	int len = file_len - offset;//继续传输
-					//	int buf_len = recv(data_socket, recv_buf, recv_len, 0);
+							//fwrite(&recv_buf, 1, recv_len-1, op);
+							//CString temp = _T(recv_buf);
+							//strname.WriteString(_T(recv_buf));
+							fwrite(recv_buf, 1, recv_len, fd);
+							/*strname.SeekToEnd();*/
+							off += buf_len;
+							MEMSET(recv_buf);
+							buf_len = recv(data_socket, recv_buf, recv_len, 0);
+						}
+						if (buf_len <= 0) {
+							return FAILED;
+						}
+						if (off == file_len) {
+							MEMSET(recv_buf);
+							recv(control_sock, recv_buf, recv_len, 0);
+							fclose(fd);
+							closesocket(data_socket);//关闭套接字
+							return SUCCESSFUL;
+						}
+						else {
+							fclose(fd);//关闭文件
+							closesocket(data_socket);//关闭套接字
+							return FAILED;
+						}
 
-					//	for (len; len > 0; len = len - buf_len)
-					//	{
-					//		if (buf_len < 0) {
-
-					//			break;
-					//		}
-					//		if (buf_len == 0)
-					//			return FAILED_TYPE_5;
-					//		strname.WriteString(recv_buf);
-					//		strname.SeekToEnd();
-					//		buf_len = recv(data_socket, recv_buf, recv_len, 0);
-
-					//	}
-					//	if (len <= 0) {
-					//		strname.Close();//关闭文件
-					//		closesocket(data_socket);//关闭套接字
-					//		return SUCCESSFUL;
-					//	}
-					//	else {
-					//		strname.Close();//关闭文件
-					//		closesocket(data_socket);//关闭套接字
-					//		return FAILED;
-					//	}
-
-					//}
+					}
 
 				}
 				
