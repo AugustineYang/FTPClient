@@ -20,7 +20,7 @@
 #include <cstring>
 #include <cstddef>
 #include<string>
-
+#include <direct.h>
 #pragma comment(lib, "wsock32.lib")
 #pragma warning(disable:4996)
 
@@ -608,7 +608,7 @@ short CFTPClientDlg::OnUpload()
 			return FAILED_TYPE_1;
 		}
 		
-		CString strname;
+		CString strname,strpath;
 		//char* strname;
 		//弹出“打开”对话框
 		//CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|",this);
@@ -616,6 +616,9 @@ short CFTPClientDlg::OnUpload()
 		if (file.DoModal() == IDOK)
 		{
 			strname = file.GetFileName();
+			strpath = file.GetPathName();
+			SetCurrentDirectoryA(strpath);
+			
 			//USES_CONVERSION;
 			//strname = T2A(sname);
 			//strname = "";
@@ -643,7 +646,7 @@ short CFTPClientDlg::OnUpload()
 			cod[3] = '\0';
 			if (strcmp(cod, "150") == 0) {
 				//连接成功
-				fd = fopen(strname, "rb");//以二进制打开文件
+				fd = fopen(strpath, "rb");//以二进制打开文件
 				if (fd != NULL) {
 					//打开成功
 					bcnt = 0;
