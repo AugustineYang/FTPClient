@@ -883,10 +883,12 @@ short CFTPClientDlg::OnDownload()
 						fwrite(recv_buf, 1, recv_len, fd);
 						/*strname.SeekToEnd();*/
 						off += buf_len;
+						float percent = float(off) / float(file_len) * 100;
+						m_pro.SetPos(percent);
 						MEMSET(recv_buf);
 						buf_len = recv(data_socket, recv_buf, recv_len, 0);
 					}
-					if (buf_len <= 0) {
+					if (buf_len < 0) {
 						return FAILED;
 					}
 					if (off==file_len) {
@@ -929,7 +931,7 @@ short CFTPClientDlg::OnDownload()
 							MEMSET(recv_buf);
 							buf_len = recv(data_socket, recv_buf, recv_len, 0);
 						}
-						if (buf_len <= 0) {
+						if (buf_len < 0) {
 							return FAILED;
 						}
 						if (off == file_len) {
