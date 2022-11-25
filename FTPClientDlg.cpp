@@ -324,6 +324,10 @@ void CFTPClientDlg::OnBnClickedDownload()
 	{
 		MessageBox(_T("数据连接断开"));
 	}
+	else if (status == FAILED_TYPE_6)
+	{
+		MessageBox(_T("请选择要下载的文件"));
+	}
 	else
 	{
 		MessageBox(_T("请先连接FTP服务器！"));
@@ -383,15 +387,17 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	{
 		return FAILED_TYPE_2;
 	}
-	recv(control_sock, read_buf, BUFFER_SIZE, 0);
+	recv(control_sock, read_buf, sizeof read_buf, 0);
 
 	sprintf(send_buf, "USER %s\r\n", account);
 	send(control_sock, send_buf, strlen(send_buf), 0);
-	recv(control_sock, read_buf, BUFFER_SIZE, 0);
+	MEMSET(read_buf);
+	recv(control_sock, read_buf, sizeof read_buf, 0);
 
 	sprintf(send_buf, "PASS %s\r\n", password);
 	send(control_sock, send_buf, strlen(send_buf), 0);
-	recv(control_sock, read_buf, BUFFER_SIZE, 0);
+	MEMSET(read_buf);
+	recv(control_sock, read_buf, sizeof read_buf, 0);
 
 	if (strncmp(read_buf, "230", 3))
 	{
@@ -407,6 +413,7 @@ short CFTPClientDlg::OnDisconnect()
 	char send_buf[BUFFER_SIZE], read_buf[BUFFER_SIZE];
 	sprintf(send_buf, "QUIT\r\n");
 	send(control_sock, send_buf, strlen(send_buf), 0);
+	MEMSET(read_buf);
 	recv(control_sock, read_buf, BUFFER_SIZE, 0);
 	if (strncmp(read_buf, "221", 3) == 0)
 	{
@@ -468,10 +475,13 @@ short CFTPClientDlg::OnRefresh()
 		
 		sprintf(sbuff, "MLSD\r\n");//MLSD是 LIST 命令的替代品，旨在标准化目录列表的格式
 		send(control_sock, sbuff, strlen(sbuff), 0);
+		MEMSET(rbuff);
 		recv(control_sock, rbuff, BUFFER_SIZE, 0);
+		MEMSET(rbuff);
 		recv(control_sock, rbuff, BUFFER_SIZE, 0);
 		if (!strncmp(rbuff, "226", 3))//连接成功
 		{
+			MEMSET(rbuff);
 			int lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
 			if (lens == 0) { return FAILED; }//没有成功接收数据
 			while (lens != SOCKET_ERROR && lens != 0) {//接收残余数据
@@ -482,6 +492,7 @@ short CFTPClientDlg::OnRefresh()
 					ListBox.AddString(pp + 2);
 					p = strtok(NULL, "\r\n");
 				}
+				MEMSET(rbuff);
 				lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
 
 				/*
@@ -736,24 +747,32 @@ short CFTPClientDlg::OnDownload()
 	SOCKET data_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
 	char send_buf[1024] = {0};
 	char recv_buf[1024] = {0};
-	char cod[3] = {0};
+	MEMSET(recv_buf);
+	MEMSET(send_buf);
 	int recv_len = 1024;
 	if (connected == false) { return DISCONNECTED; }
 	else {
+		sprintf(send_buf, "TYPE I\r\n");
+
+		send(control_sock, send_buf, strlen(send_buf), 0);
+		MEMSET(recv_buf);
+		recv(control_sock, recv_buf, recv_len, 0);
 		//首先通过控制连接将服务器切换到被动模式
 		char* strname;
 		sprintf(send_buf, "PASV\r\n");
 		int isend = send(control_sock, send_buf, strlen(send_buf), 0);
 		if (isend == SOCKET_ERROR) {
 			return FAILED_TYPE_2;
+
 		}
+		MEMSET(recv_buf);
 		int irecv = recv(control_sock, recv_buf, recv_len, 0);
 		if (irecv == SOCKET_ERROR) {
 			return FAILED_TYPE_1;
 		}
 		
-		memcpy(cod, recv_buf, 3);
-		if (cod != "227") {
+		
+		if (strncmp(recv_buf, "227", 3)) {
 			return FAILED_TYPE_3;
 		}
 		char* part[6];
@@ -790,24 +809,38 @@ short CFTPClientDlg::OnDownload()
 		memset(recv_buf, 0, sizeof(recv_buf));
 		//下面为下载实现
 		CString selfile;
-		ListBox.GetText(ListBox.GetCurSel(), selfile);//获得想要下载资源名
+		int n = ListBox.GetCurSel();
+		if (n == -1) {
+			return FAILED_TYPE_6;
+		}
+		//int c = ListBox.GetCount();
+		ListBox.GetText(n, selfile);//获得想要下载资源名
 		if (!selfile.IsEmpty())
 		{
 			
-			CFileDialog file(FALSE);
+			CFileDialog file(FALSE,NULL,selfile, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT);
 			if (file.DoModal() == IDOK)
 			{
-				CString strname;
-				strname = file.GetFileName();
+				CString strpath;
+				strpath = file.GetPathName();//获取保存路径
+				FILE* fd;
+				fd = fopen(strpath, "wb");
+				//CStdioFile strname;//文件
+				//bool is_open = strname.Open(strpath, CFile::modeCreate | CFile::modeWrite | CFile::modeNoTruncate, NULL);
+				if (!fd) {
+					return FAILED;
+				}
+				//文件成功打开
+				/*CString strname;
+				strname = file.GetFileName();*/
 				
-				CString strdir;
-				strdir = "";//这里填写本地目录位置
+				
 				//pFtpConnection->SetCurrentDirectory(strdir);
 				//获取文件大小
 				sprintf(send_buf,"SIZE %s\r\n",selfile);
 
 				send(control_sock, send_buf, strlen(send_buf), 0);
-
+				MEMSET(recv_buf);
 				recv(control_sock, recv_buf, recv_len, 0);
 				int file_len;
 				strtok(recv_buf, " ");
@@ -815,75 +848,96 @@ short CFTPClientDlg::OnDownload()
 				str = strtok(NULL, "\r\n");
 				file_len = atoi(str);
 				//发送下载命令：
+				
 
 				sprintf(send_buf, "RETR %s\r\n", selfile);
 
 				send(control_sock, send_buf, strlen(send_buf),0);
-
+				MEMSET(recv_buf);
 				recv(control_sock, recv_buf, recv_len,0);
 
-				strncpy(cod, recv_buf, 3);
-				if (cod == "150") {
-					FILE* op = NULL;
-					op = fopen(strname, "wb");//打开本地文件夹
-					int len = file_len;
-					int buf_len = recv(data_socket, recv_buf, recv_len, 0);
-					
-					for( len ; len > 0; len = len - buf_len)
-					{
-						if (buf_len < 0) {
-							
-							break;
-						}
-						if (buf_len == 0)
-							return FAILED_TYPE_5;
-						fwrite(&recv_buf, 1, recv_len-1, op);
-						buf_len = recv(data_socket, recv_buf, recv_len, 0);
+				bool temp = strncmp(recv_buf, "150", 3);
+				if (!strncmp(recv_buf, "150", 3)) {
+					//FILE* op = NULL;
+					//op = fopen(strname, "wb");//打开本地文件夹
 
+					int len = file_len;
+					if (file_len == 0) {
+						return SUCCESSFUL;
 					}
-					if (len <= 0) {
-						fclose(op);//关闭文件
+					MEMSET(recv_buf);
+					int buf_len = recv(data_socket, recv_buf, recv_len, 0);
+					if (buf_len <= 0) {
+						return FAILED;
+					}
+					int off = 0;
+					while(buf_len>0)
+					{
+						
+						//fwrite(&recv_buf, 1, recv_len-1, op);
+						CString temp = _T(recv_buf);
+						//strname.WriteString(_T(recv_buf));
+						fwrite(recv_buf, 1, recv_len, fd);
+						/*strname.SeekToEnd();*/
+						off += buf_len;
+						MEMSET(recv_buf);
+						buf_len = recv(data_socket, recv_buf, recv_len, 0);
+					}
+					if (buf_len <= 0) {
+						return FAILED;
+					}
+					if (off==file_len) {
+						//strname.Close();//关闭文件
+						MEMSET(recv_buf);
+						recv(control_sock, recv_buf, recv_len, 0);
+						fclose(fd);
 						closesocket(data_socket);//关闭套接字
 						return SUCCESSFUL;
 					}
 					//进行断点续传
 					else {
-						fseek(op, 0, SEEK_END);  //先用fseek将文件指针移到文件末尾
-						int offset = ftell(op);
+						
+						int offset = off;
 						
 						sprintf(send_buf, "REST %ld\r\n", offset);
 
 						send(control_sock, send_buf, strlen(send_buf), 0);
-
+						MEMSET(recv_buf);
 						recv(control_sock, recv_buf, recv_len, 0);
 
 						sprintf(send_buf, "RETR %s\r\n", selfile);
 
 						send(control_sock, send_buf, strlen(send_buf), 0);
-
+						MEMSET(recv_buf);
 						recv(control_sock, recv_buf, recv_len, 0);
 						int len = file_len - offset;//继续传输
+						MEMSET(recv_buf);
 						int buf_len = recv(data_socket, recv_buf, recv_len, 0);
 
-						for (len; len > 0; len = len - buf_len)
+						while (buf_len > 0)
 						{
-							if (buf_len < 0) {
 
-								break;
-							}
-							if (buf_len == 0)
-								return FAILED_TYPE_5;
-							fwrite(&recv_buf, 1, recv_len - 1, op);
+							//fwrite(&recv_buf, 1, recv_len-1, op);
+							//CString temp = _T(recv_buf);
+							//strname.WriteString(_T(recv_buf));
+							fwrite(recv_buf, 1, recv_len, fd);
+							/*strname.SeekToEnd();*/
+							off += buf_len;
+							MEMSET(recv_buf);
 							buf_len = recv(data_socket, recv_buf, recv_len, 0);
-
 						}
-						if (len <= 0) {
-							fclose(op);//关闭文件
+						if (buf_len <= 0) {
+							return FAILED;
+						}
+						if (off == file_len) {
+							MEMSET(recv_buf);
+							recv(control_sock, recv_buf, recv_len, 0);
+							fclose(fd);
 							closesocket(data_socket);//关闭套接字
 							return SUCCESSFUL;
 						}
 						else {
-							fclose(op);//关闭文件
+							fclose(fd);//关闭文件
 							closesocket(data_socket);//关闭套接字
 							return FAILED;
 						}
