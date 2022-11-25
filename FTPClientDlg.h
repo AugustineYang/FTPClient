@@ -73,4 +73,5 @@ public:
 	SOCKET control_sock; //控制接口
 	//SOCKET data_sock; //数据接口
 
+	CProgressCtrl m_pro;
 };

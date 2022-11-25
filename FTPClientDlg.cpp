@@ -78,15 +78,16 @@ CFTPClientDlg::CFTPClientDlg(CWnd* pParent /*=nullptr*/)
 void CFTPClientDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_Connect,	Connect);
-	DDX_Control(pDX, IDC_Refresh,	Refresh);
-	DDX_Control(pDX, IDC_Upload,	Upload);
-	DDX_Control(pDX, IDC_Download,	Download);
-	DDX_Control(pDX, IDC_Delete,	Delete);
-	DDX_Control(pDX, IDC_IPAddress,	IPAddress);
-	DDX_Control(pDX, IDC_Account,	Account);
-	DDX_Control(pDX, IDC_Password,	Password);
-	DDX_Control(pDX, IDC_LIST1,		ListBox);
+	DDX_Control(pDX, IDC_Connect, Connect);
+	DDX_Control(pDX, IDC_Refresh, Refresh);
+	DDX_Control(pDX, IDC_Upload, Upload);
+	DDX_Control(pDX, IDC_Download, Download);
+	DDX_Control(pDX, IDC_Delete, Delete);
+	DDX_Control(pDX, IDC_IPAddress, IPAddress);
+	DDX_Control(pDX, IDC_Account, Account);
+	DDX_Control(pDX, IDC_Password, Password);
+	DDX_Control(pDX, IDC_LIST1, ListBox);
+	DDX_Control(pDX, IDC_PROGRESS1, m_pro);
 }
 
 BEGIN_MESSAGE_MAP(CFTPClientDlg, CDialogEx)
@@ -133,7 +134,7 @@ BOOL CFTPClientDlg::OnInitDialog()
 	//  执行此操作
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
-
+	m_pro.SetRange(0,100);
 	// TODO: 在此添加额外的初始化代码
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -531,7 +532,7 @@ short CFTPClientDlg::OnUpload()
 	// 连接错误请返回 FAILED_TYPE_1
 	// 打开文件失败返回 FAILED_TYPE_2
 	// 取消上传返回 CANCELED
-	int bcnt;//字节数
+	long int bcnt;//字节数
 	int len;
 	SOCKET data_sock = socket(AF_INET, SOCK_STREAM, 0);;
 	struct sockaddr_in serv_data_addr;//数据接口地址
@@ -612,44 +613,111 @@ short CFTPClientDlg::OnUpload()
 			// 取消上传
 			return CANCELED;
 		}
-		memset(rbuff, 0, sizeof(rbuff)); 
+		memset(rbuff, 0, sizeof(rbuff));
 		memset(sbuff, 0, sizeof(sbuff));
-		sprintf(sbuff, "STOR %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
-		
-		send(control_sock, sbuff, sizeof(sbuff),0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
-		recv(control_sock, rbuff, sizeof(rbuff),0);
-		strncpy(cod, rbuff, 3);//零终止符的问题？
+		sprintf(sbuff, "SIZE %s\r\n", strname);
+
+		send(control_sock, sbuff, sizeof(sbuff), 0);
+		recv(control_sock, rbuff, sizeof(rbuff), 0);
+		strncpy(cod, rbuff, 3);
 		cod[3] = '\0';
-		if (strcmp(cod , "150")==0) {
-			//连接成功
-			fd = fopen(strname, "rb");//以二进制打开文件
-			if (fd!=NULL) {
-				//打开成功
-				
-				while (1) { //从文件中循环读取数据并发送
-					//len用来实现进度条
-					memset(sbuff, 0, sizeof(sbuff));
-					int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
-					if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
-						// closesocket(datatcps);要不要断开？
-						// 连接错误
-						closesocket(data_sock);
-						return FAILED_TYPE_1;
+		if (strcmp(cod, "550") == 0) {
+			memset(rbuff, 0, sizeof(rbuff));
+			memset(sbuff, 0, sizeof(sbuff));
+			sprintf(sbuff, "STOR %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
+
+			send(control_sock, sbuff, sizeof(sbuff), 0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
+			recv(control_sock, rbuff, sizeof(rbuff), 0);
+			strncpy(cod, rbuff, 3);
+			cod[3] = '\0';
+			if (strcmp(cod, "150") == 0) {
+				//连接成功
+				fd = fopen(strname, "rb");//以二进制打开文件
+				if (fd != NULL) {
+					//打开成功
+					bcnt = 0;
+					long int size = 0;
+					fseek(fd, 0, SEEK_END);
+					size = ftell(fd);
+					fseek(fd, 0, SEEK_SET);
+					while (1) { //从文件中循环读取数据并发送
+						//len用来实现进度条
+						memset(sbuff, 0, sizeof(sbuff));
+						int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
+						if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
+							closesocket(data_sock);
+							return FAILED_TYPE_1;
+						}
+						bcnt += len;
+						float percent = float(bcnt) / float(size) * 100;
+						m_pro.SetPos(percent);
+						if (len < sizeof(sbuff)) {
+							closesocket(data_sock);
+							break; //传输完成
+						}
 					}
-					if (len < sizeof(sbuff)) {
-						// closesocket(datatcps);要不要断开？
-						closesocket(data_sock);
-						break; //传输完成
-					}
+					memset(rbuff, 0, sizeof(rbuff));
+
+					recv(control_sock, rbuff, sizeof(rbuff), 0);
+					return SUCCESSFUL;
 				}
-				memset(rbuff, 0, sizeof(rbuff));
-				
-				recv(control_sock, rbuff, sizeof(rbuff), 0);
-				return SUCCESSFUL;
+				else {
+					// 打开文件失败
+					return FAILED_TYPE_2;
+				}
 			}
-			else {
-				// 打开文件失败
-				return FAILED_TYPE_2;
+		}
+		else {
+			long int offset = atoi(strtok(rbuff+4, "\r") );
+			memset(rbuff, 0, sizeof(rbuff));
+			memset(sbuff, 0, sizeof(sbuff));
+			sprintf(sbuff, "REST %d\r\n", offset);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
+
+			send(control_sock, sbuff, sizeof(sbuff), 0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
+			recv(control_sock, rbuff, sizeof(rbuff), 0);
+			memset(rbuff, 0, sizeof(rbuff));
+			memset(sbuff, 0, sizeof(sbuff));
+			sprintf(sbuff, "STOR %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
+
+			send(control_sock, sbuff, sizeof(sbuff), 0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
+			recv(control_sock, rbuff, sizeof(rbuff), 0);
+			strncpy(cod, rbuff, 3);
+			cod[3] = '\0';
+			if (strcmp(cod, "150") == 0) {
+				//连接成功
+				fd = fopen(strname, "rb");//以二进制打开文件
+				if (fd != NULL) {
+					//打开成功
+					bcnt = offset;
+					long int size = 0;
+					fseek(fd, 0, SEEK_END);
+					size = ftell(fd);
+					fseek(fd, offset, SEEK_SET);
+					while (1) { //从文件中循环读取数据并发送
+						//len用来实现进度条
+						memset(sbuff, 0, sizeof(sbuff));
+						int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
+						if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
+							closesocket(data_sock);
+							return FAILED_TYPE_1;
+						}
+						bcnt += len;
+						float percent = float(bcnt) / float(size) * 100;
+						m_pro.SetPos(percent);
+						if (len < sizeof(sbuff)) {
+							closesocket(data_sock);
+							break; //传输完成
+						}
+					}
+					memset(rbuff, 0, sizeof(rbuff));
+
+					recv(control_sock, rbuff, sizeof(rbuff), 0);
+					return SUCCESSFUL;
+				}
+				else {
+					// 打开文件失败
+					return FAILED_TYPE_2;
+				}
 			}
 		}
 		
