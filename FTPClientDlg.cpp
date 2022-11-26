@@ -196,7 +196,7 @@ void CFTPClientDlg::OnLbnSelchangeList1()
 
 void CFTPClientDlg::OnBnClickedConnect()
 {
-	if (connected == false)
+	/*if (connected == false)
 	{
 		CString ipaddress;
 		CString account;
@@ -239,6 +239,32 @@ void CFTPClientDlg::OnBnClickedConnect()
 		{
 			MessageBox(_T("断开连接失败！"));
 		}
+	}*/
+
+	CString ipaddress;
+	CString account;
+	CString password;
+	GetDlgItemText(IDC_IPAddress, ipaddress);
+	GetDlgItemText(IDC_Account, account);
+	GetDlgItemText(IDC_Password, password);
+	short status = OnConnect(ipaddress, account, password);
+	if (status == SUCCESSFUL)
+	{
+		MessageBox(_T("连接成功！"));
+		connected = true;
+		OnRefresh();
+	}
+	else if (status == FAILED_TYPE_1)
+	{
+		MessageBox(_T("用户名或密码错误！"));
+	}
+	else if (status == FAILED_TYPE_2)
+	{
+		MessageBox(_T("连接失败，请检查IP地址或网络连接！"));
+	}
+	else
+	{
+		MessageBox(_T("Socket服务错误！"));
 	}
 	
 }
@@ -670,6 +696,7 @@ short CFTPClientDlg::OnUpload()
 							break; //传输完成
 						}
 					}
+					fclose(fd);
 					memset(rbuff, 0, sizeof(rbuff));
 
 					recv(control_sock, rbuff, sizeof(rbuff), 0);
@@ -699,7 +726,7 @@ short CFTPClientDlg::OnUpload()
 			cod[3] = '\0';
 			if (strcmp(cod, "150") == 0) {
 				//连接成功
-				fd = fopen(strname, "rb");//以二进制打开文件
+				fd = fopen(strpath, "rb");//以二进制打开文件
 				if (fd != NULL) {
 					//打开成功
 					bcnt = offset;
@@ -723,6 +750,7 @@ short CFTPClientDlg::OnUpload()
 							break; //传输完成
 						}
 					}
+					fclose(fd);
 					memset(rbuff, 0, sizeof(rbuff));
 
 					recv(control_sock, rbuff, sizeof(rbuff), 0);
