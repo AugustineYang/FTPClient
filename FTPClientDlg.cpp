@@ -820,27 +820,23 @@ short CFTPClientDlg::OnDownload()
 		ListBox.GetText(n, selfile);//获得想要下载资源名
 		if (!selfile.IsEmpty())
 		{
-			
-			CFileDialog file(FALSE,NULL,selfile, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT);
-			if (file.DoModal() == IDOK)
+			CFolderPickerDialog folder;
+			if (folder.DoModal() == IDOK)
 			{
-				CString strpath;
-				strpath = file.GetPathName();//获取保存路径
+				CString des;
+				des = folder.GetPathName();
+				CString strpath = des + "\\" + selfile;
 				FILE* fd;
-				fd = fopen(strpath, "wb");
-				//CStdioFile strname;//文件
-				//bool is_open = strname.Open(strpath, CFile::modeCreate | CFile::modeWrite | CFile::modeNoTruncate, NULL);
+				
+				fd = fopen(strpath, "ab");
 				if (!fd) {
 					return FAILED;
 				}
-				//文件成功打开
-				/*CString strname;
-				strname = file.GetFileName();*/
-				
-				
-				//pFtpConnection->SetCurrentDirectory(strdir);
-				//获取文件大小
-				sprintf(send_buf,"SIZE %s\r\n",selfile);
+				fseek(fd, 0, SEEK_END);//定位文件指针到文件尾。
+
+				int size = ftell(fd);//获取文件指针偏移量，即文件大小。
+
+				sprintf(send_buf, "SIZE %s\r\n", selfile);
 
 				send(control_sock, send_buf, strlen(send_buf), 0);
 				MEMSET(recv_buf);
@@ -850,110 +846,241 @@ short CFTPClientDlg::OnDownload()
 				char* str;
 				str = strtok(NULL, "\r\n");
 				file_len = atoi(str);
-				//发送下载命令：
-				
 
-				sprintf(send_buf, "RETR %s\r\n", selfile);
+				int off = 0;
+				if (size == 0) {//如果是空文件那么从头下载
+					
+					//发送下载命令：
 
-				send(control_sock, send_buf, strlen(send_buf),0);
-				MEMSET(recv_buf);
-				recv(control_sock, recv_buf, recv_len,0);
 
-				bool temp = strncmp(recv_buf, "150", 3);
-				if (!strncmp(recv_buf, "150", 3)) {
-					//FILE* op = NULL;
-					//op = fopen(strname, "wb");//打开本地文件夹
+					sprintf(send_buf, "RETR %s\r\n", selfile);
 
-					int len = file_len;
-					if (file_len == 0) {
-						return SUCCESSFUL;
-					}
+					send(control_sock, send_buf, strlen(send_buf), 0);
 					MEMSET(recv_buf);
-					int buf_len = recv(data_socket, recv_buf, recv_len, 0);
-					if (buf_len <= 0) {
-						return FAILED;
-					}
-					int off = 0;
-					while(buf_len>0)
-					{
-						
-						//fwrite(&recv_buf, 1, recv_len-1, op);
-						CString temp = _T(recv_buf);
-						//strname.WriteString(_T(recv_buf));
-						fwrite(recv_buf, 1, recv_len, fd);
-						/*strname.SeekToEnd();*/
-						off += buf_len;
-						float percent = float(off) / float(file_len) * 100;
-						m_pro.SetPos(percent);
-						MEMSET(recv_buf);
-						buf_len = recv(data_socket, recv_buf, recv_len, 0);
-					}
-					if (buf_len < 0) {
-						return FAILED;
-					}
-					if (off==file_len) {
-						//strname.Close();//关闭文件
-						MEMSET(recv_buf);
-						recv(control_sock, recv_buf, recv_len, 0);
-						fclose(fd);
-						closesocket(data_socket);//关闭套接字
-						return SUCCESSFUL;
-					}
-					//进行断点续传
-					else {
-						
-						int offset = off;
-						
-						sprintf(send_buf, "REST %ld\r\n", offset);
+					recv(control_sock, recv_buf, recv_len, 0);
 
-						send(control_sock, send_buf, strlen(send_buf), 0);
-						MEMSET(recv_buf);
-						recv(control_sock, recv_buf, recv_len, 0);
+					bool temp = strncmp(recv_buf, "150", 3);
+					
+					if (!strncmp(recv_buf, "150", 3)) {
+						//FILE* op = NULL;
+						//op = fopen(strname, "wb");//打开本地文件夹
 
-						sprintf(send_buf, "RETR %s\r\n", selfile);
-
-						send(control_sock, send_buf, strlen(send_buf), 0);
-						MEMSET(recv_buf);
-						recv(control_sock, recv_buf, recv_len, 0);
-						int len = file_len - offset;//继续传输
+						int len = file_len;
+						if (file_len == 0) {
+							return SUCCESSFUL;
+						}
 						MEMSET(recv_buf);
 						int buf_len = recv(data_socket, recv_buf, recv_len, 0);
-
+						if (buf_len <= 0) {
+							return FAILED;
+						}
+						
 						while (buf_len > 0)
 						{
 
-							//fwrite(&recv_buf, 1, recv_len-1, op);
-							//CString temp = _T(recv_buf);
-							//strname.WriteString(_T(recv_buf));
-							fwrite(recv_buf, 1, recv_len, fd);
-							/*strname.SeekToEnd();*/
+							
+							CString temp = _T(recv_buf);
+							fwrite(recv_buf, 1, buf_len, fd);
 							off += buf_len;
-							MEMSET(recv_buf);
 							float percent = float(off) / float(file_len) * 100;
 							m_pro.SetPos(percent);
+							MEMSET(recv_buf);
 							buf_len = recv(data_socket, recv_buf, recv_len, 0);
 						}
 						if (buf_len < 0) {
 							return FAILED;
 						}
 						if (off == file_len) {
+							//strname.Close();//关闭文件
 							MEMSET(recv_buf);
 							recv(control_sock, recv_buf, recv_len, 0);
 							fclose(fd);
 							closesocket(data_socket);//关闭套接字
 							return SUCCESSFUL;
 						}
-						else {
-							fclose(fd);//关闭文件
-							closesocket(data_socket);//关闭套接字
-							return FAILED;
-						}
+					}
+					
+				}
+				else {//断点续传
+					int offset = size;
+					off += offset;
+					sprintf(send_buf, "REST %ld\r\n", offset);
 
+					send(control_sock, send_buf, strlen(send_buf), 0);
+					MEMSET(recv_buf);
+					recv(control_sock, recv_buf, recv_len, 0);
+
+					sprintf(send_buf, "RETR %s\r\n", selfile);
+
+					send(control_sock, send_buf, strlen(send_buf), 0);
+					MEMSET(recv_buf);
+					recv(control_sock, recv_buf, recv_len, 0);
+					int len = file_len - offset;//继续传输
+					MEMSET(recv_buf);
+					int buf_len = recv(data_socket, recv_buf, recv_len, 0);
+
+					while (buf_len > 0)
+					{
+
+						//fwrite(&recv_buf, 1, recv_len-1, op);
+						//CString temp = _T(recv_buf);
+						//strname.WriteString(_T(recv_buf));
+						fwrite(recv_buf, 1, buf_len, fd);
+						/*strname.SeekToEnd();*/
+						off += buf_len;
+						MEMSET(recv_buf);
+						float percent = float(off) / float(file_len) * 100;
+						m_pro.SetPos(percent);
+						buf_len = recv(data_socket, recv_buf, recv_len, 0);
+					}
+					if (buf_len < 0) {
+						return FAILED;
+					}
+					if (off == file_len) {
+						MEMSET(recv_buf);
+						recv(control_sock, recv_buf, recv_len, 0);
+						fclose(fd);
+						closesocket(data_socket);//关闭套接字
+						return SUCCESSFUL;
 					}
 
 				}
-				
+				//MessageBox(des);
 			}
+			
+			//CFileDialog file(FALSE,NULL,selfile, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT);
+			//if (file.DoModal() == IDOK)
+			//{
+			//	CString strpath;
+			//	strpath = file.GetPathName();//获取保存路径
+			//	FILE* fd;
+			//	fd = fopen(strpath, "ab");
+			//	//CStdioFile strname;//文件
+			//	//bool is_open = strname.Open(strpath, CFile::modeCreate | CFile::modeWrite | CFile::modeNoTruncate, NULL);
+			//	if (!fd) {
+			//		return FAILED;
+			//	}
+			//	//文件成功打开
+			//	/*CString strname;
+			//	strname = file.GetFileName();*/
+			//	
+			//	
+			//	//pFtpConnection->SetCurrentDirectory(strdir);
+			//	//获取文件大小
+			//	sprintf(send_buf,"SIZE %s\r\n",selfile);
+
+			//	send(control_sock, send_buf, strlen(send_buf), 0);
+			//	MEMSET(recv_buf);
+			//	recv(control_sock, recv_buf, recv_len, 0);
+			//	int file_len;
+			//	strtok(recv_buf, " ");
+			//	char* str;
+			//	str = strtok(NULL, "\r\n");
+			//	file_len = atoi(str);
+			//	//发送下载命令：
+			//	
+
+			//	sprintf(send_buf, "RETR %s\r\n", selfile);
+
+			//	send(control_sock, send_buf, strlen(send_buf),0);
+			//	MEMSET(recv_buf);
+			//	recv(control_sock, recv_buf, recv_len,0);
+
+			//	bool temp = strncmp(recv_buf, "150", 3);
+			//	if (!strncmp(recv_buf, "150", 3)) {
+			//		//FILE* op = NULL;
+			//		//op = fopen(strname, "wb");//打开本地文件夹
+
+			//		int len = file_len;
+			//		if (file_len == 0) {
+			//			return SUCCESSFUL;
+			//		}
+			//		MEMSET(recv_buf);
+			//		int buf_len = recv(data_socket, recv_buf, recv_len, 0);
+			//		if (buf_len <= 0) {
+			//			return FAILED;
+			//		}
+			//		int off = 0;
+			//		while(buf_len>0)
+			//		{
+			//			
+			//			//fwrite(&recv_buf, 1, recv_len-1, op);
+			//			CString temp = _T(recv_buf);
+			//			//strname.WriteString(_T(recv_buf));
+			//			fwrite(recv_buf, 1, recv_len, fd);
+			//			/*strname.SeekToEnd();*/
+			//			off += buf_len;
+			//			float percent = float(off) / float(file_len) * 100;
+			//			m_pro.SetPos(percent);
+			//			MEMSET(recv_buf);
+			//			buf_len = recv(data_socket, recv_buf, recv_len, 0);
+			//		}
+			//		if (buf_len < 0) {
+			//			return FAILED;
+			//		}
+			//		if (off==file_len) {
+			//			//strname.Close();//关闭文件
+			//			MEMSET(recv_buf);
+			//			recv(control_sock, recv_buf, recv_len, 0);
+			//			fclose(fd);
+			//			closesocket(data_socket);//关闭套接字
+			//			return SUCCESSFUL;
+			//		}
+			//		//进行断点续传
+			//		else {
+			//			
+			//			int offset = off;
+			//			
+			//			sprintf(send_buf, "REST %ld\r\n", offset);
+
+			//			send(control_sock, send_buf, strlen(send_buf), 0);
+			//			MEMSET(recv_buf);
+			//			recv(control_sock, recv_buf, recv_len, 0);
+
+			//			sprintf(send_buf, "RETR %s\r\n", selfile);
+
+			//			send(control_sock, send_buf, strlen(send_buf), 0);
+			//			MEMSET(recv_buf);
+			//			recv(control_sock, recv_buf, recv_len, 0);
+			//			int len = file_len - offset;//继续传输
+			//			MEMSET(recv_buf);
+			//			int buf_len = recv(data_socket, recv_buf, recv_len, 0);
+
+			//			while (buf_len > 0)
+			//			{
+
+			//				//fwrite(&recv_buf, 1, recv_len-1, op);
+			//				//CString temp = _T(recv_buf);
+			//				//strname.WriteString(_T(recv_buf));
+			//				fwrite(recv_buf, 1, recv_len, fd);
+			//				/*strname.SeekToEnd();*/
+			//				off += buf_len;
+			//				MEMSET(recv_buf);
+			//				float percent = float(off) / float(file_len) * 100;
+			//				m_pro.SetPos(percent);
+			//				buf_len = recv(data_socket, recv_buf, recv_len, 0);
+			//			}
+			//			if (buf_len < 0) {
+			//				return FAILED;
+			//			}
+			//			if (off == file_len) {
+			//				MEMSET(recv_buf);
+			//				recv(control_sock, recv_buf, recv_len, 0);
+			//				fclose(fd);
+			//				closesocket(data_socket);//关闭套接字
+			//				return SUCCESSFUL;
+			//			}
+			//			else {
+			//				fclose(fd);//关闭文件
+			//				closesocket(data_socket);//关闭套接字
+			//				return FAILED;
+			//			}
+
+			//		}
+
+			//	}
+			//	
+			//}
 		}
 	}
 }
