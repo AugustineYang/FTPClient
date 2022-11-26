@@ -196,7 +196,7 @@ void CFTPClientDlg::OnLbnSelchangeList1()
 
 void CFTPClientDlg::OnBnClickedConnect()
 {
-	if (connected == false)
+	/*if (connected == false)
 	{
 		CString ipaddress;
 		CString account;
@@ -239,6 +239,32 @@ void CFTPClientDlg::OnBnClickedConnect()
 		{
 			MessageBox(_T("断开连接失败！"));
 		}
+	}*/
+
+	CString ipaddress;
+	CString account;
+	CString password;
+	GetDlgItemText(IDC_IPAddress, ipaddress);
+	GetDlgItemText(IDC_Account, account);
+	GetDlgItemText(IDC_Password, password);
+	short status = OnConnect(ipaddress, account, password);
+	if (status == SUCCESSFUL)
+	{
+		MessageBox(_T("连接成功！"));
+		connected = true;
+		OnRefresh();
+	}
+	else if (status == FAILED_TYPE_1)
+	{
+		MessageBox(_T("用户名或密码错误！"));
+	}
+	else if (status == FAILED_TYPE_2)
+	{
+		MessageBox(_T("连接失败，请检查IP地址或网络连接！"));
+	}
+	else
+	{
+		MessageBox(_T("Socket服务错误！"));
 	}
 	
 }
