@@ -670,6 +670,7 @@ short CFTPClientDlg::OnUpload()
 							break; //传输完成
 						}
 					}
+					fclose(fd);
 					memset(rbuff, 0, sizeof(rbuff));
 
 					recv(control_sock, rbuff, sizeof(rbuff), 0);
@@ -699,7 +700,7 @@ short CFTPClientDlg::OnUpload()
 			cod[3] = '\0';
 			if (strcmp(cod, "150") == 0) {
 				//连接成功
-				fd = fopen(strname, "rb");//以二进制打开文件
+				fd = fopen(strpath, "rb");//以二进制打开文件
 				if (fd != NULL) {
 					//打开成功
 					bcnt = offset;
@@ -723,6 +724,7 @@ short CFTPClientDlg::OnUpload()
 							break; //传输完成
 						}
 					}
+					fclose(fd);
 					memset(rbuff, 0, sizeof(rbuff));
 
 					recv(control_sock, rbuff, sizeof(rbuff), 0);
