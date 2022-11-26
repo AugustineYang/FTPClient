@@ -196,7 +196,7 @@ void CFTPClientDlg::OnLbnSelchangeList1()
 
 void CFTPClientDlg::OnBnClickedConnect()
 {
-	if (connected == false)
+	/*if (connected == false)
 	{
 		CString ipaddress;
 		CString account;
@@ -239,6 +239,32 @@ void CFTPClientDlg::OnBnClickedConnect()
 		{
 			MessageBox(_T("断开连接失败！"));
 		}
+	}*/
+
+	CString ipaddress;
+	CString account;
+	CString password;
+	GetDlgItemText(IDC_IPAddress, ipaddress);
+	GetDlgItemText(IDC_Account, account);
+	GetDlgItemText(IDC_Password, password);
+	short status = OnConnect(ipaddress, account, password);
+	if (status == SUCCESSFUL)
+	{
+		MessageBox(_T("连接成功！"));
+		connected = true;
+		OnRefresh();
+	}
+	else if (status == FAILED_TYPE_1)
+	{
+		MessageBox(_T("用户名或密码错误！"));
+	}
+	else if (status == FAILED_TYPE_2)
+	{
+		MessageBox(_T("连接失败，请检查IP地址或网络连接！"));
+	}
+	else
+	{
+		MessageBox(_T("Socket服务错误！"));
 	}
 	
 }
@@ -885,10 +911,12 @@ short CFTPClientDlg::OnDownload()
 						fwrite(recv_buf, 1, recv_len, fd);
 						/*strname.SeekToEnd();*/
 						off += buf_len;
+						float percent = float(off) / float(file_len) * 100;
+						m_pro.SetPos(percent);
 						MEMSET(recv_buf);
 						buf_len = recv(data_socket, recv_buf, recv_len, 0);
 					}
-					if (buf_len <= 0) {
+					if (buf_len < 0) {
 						return FAILED;
 					}
 					if (off==file_len) {
@@ -931,7 +959,7 @@ short CFTPClientDlg::OnDownload()
 							MEMSET(recv_buf);
 							buf_len = recv(data_socket, recv_buf, recv_len, 0);
 						}
-						if (buf_len <= 0) {
+						if (buf_len < 0) {
 							return FAILED;
 						}
 						if (off == file_len) {
