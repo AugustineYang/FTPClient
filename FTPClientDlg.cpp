@@ -16,13 +16,13 @@
 #include "afxinet.h"//添加
 #include "AfxSock.h"
 #include <iostream>
-#include "stdio.h"
 #include <cstring>
 #include <cstddef>
 #include<string>
 #include <direct.h>
 #pragma comment(lib, "wsock32.lib")
 #pragma warning(disable:4996)
+#pragma once
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -94,7 +94,7 @@ BEGIN_MESSAGE_MAP(CFTPClientDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_LBN_SELCHANGE(IDC_LIST1, &CFTPClientDlg::OnLbnSelchangeList1)
+	//ON_LBN_SELCHANGE(IDC_LIST1, &CFTPClientDlg::OnLbnSelchangeList1)
 	ON_BN_CLICKED(IDC_Connect, &CFTPClientDlg::OnBnClickedConnect)
 	ON_BN_CLICKED(IDC_Refresh, &CFTPClientDlg::OnBnClickedRefresh)
 	ON_BN_CLICKED(IDC_Upload, &CFTPClientDlg::OnBnClickedUpload)
@@ -189,58 +189,8 @@ HCURSOR CFTPClientDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-void CFTPClientDlg::OnLbnSelchangeList1()
-{
-	// TODO: 在此添加控件通知处理程序代码
-}
-
 void CFTPClientDlg::OnBnClickedConnect()
 {
-	/*if (connected == false)
-	{
-		CString ipaddress;
-		CString account;
-		CString password;
-		GetDlgItemText(IDC_IPAddress, ipaddress);
-		GetDlgItemText(IDC_Account, account);
-		GetDlgItemText(IDC_Password, password);
-		short status = OnConnect(ipaddress, account, password);
-		if (status == SUCCESSFUL)
-		{
-			MessageBox(_T("连接成功！")); 
-			GetDlgItem(IDC_Connect)->SetWindowText(_T("断开连接"));
-			connected = true;
-			OnRefresh();
-		}
-		else if (status == FAILED_TYPE_1)
-		{
-			MessageBox(_T("用户名或密码错误！"));
-		}
-		else if(status == FAILED_TYPE_2)
-		{
-			MessageBox(_T("连接失败，请检查IP地址或网络连接！"));
-		}
-		else
-		{
-			MessageBox(_T("Socket服务错误！"));
-		}
-	}
-	else
-	{
-		short status = OnDisconnect();
-		if (status == SUCCESSFUL)
-		{
-			MessageBox(_T("断开连接成功！"));
-			GetDlgItem(IDC_Connect)->SetWindowText(_T("连接"));
-			connected = false;
-			ListBox.ResetContent();
-		}
-		else
-		{
-			MessageBox(_T("断开连接失败！"));
-		}
-	}*/
-
 	CString ipaddress;
 	CString account;
 	CString password;
@@ -330,14 +280,6 @@ void CFTPClientDlg::OnBnClickedDownload()
 	{
 		MessageBox(_T("下载失败！"));
 	}
-	else if (status == FAILED_TYPE_1)
-	{
-		MessageBox(_T("socket接收失败"));
-	}
-	else if(status == FAILED_TYPE_2)
-	{
-		MessageBox(_T("socket发送失败"));
-	}
 	else if (status == FAILED_TYPE_3)
 	{
 		MessageBox(_T("被动模式启动失败"));
@@ -348,15 +290,19 @@ void CFTPClientDlg::OnBnClickedDownload()
 	}
 	else if (status == FAILED_TYPE_5)
 	{
-		MessageBox(_T("数据连接断开"));
+		MessageBox(_T("网络连接错误！"));
 	}
 	else if (status == FAILED_TYPE_6)
 	{
 		MessageBox(_T("请选择要下载的文件"));
 	}
-	else
+	else if(status == DISCONNECTED)
 	{
 		MessageBox(_T("请先连接FTP服务器！"));
+	}
+	else // status == CANCELED
+	{
+		// Do Nothing.
 	}
 }
 
@@ -388,16 +334,41 @@ void CFTPClientDlg::OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult)
 	*pResult = 0;
 }
 
+Server CFTPClientDlg::GetPASVAddr(char* rbuff)
+{
+	char* part[6];
+	MEMSET(part);
+	if (strtok(rbuff, "("))
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			part[i] = strtok(NULL, ",");
+
+		}
+		part[5] = strtok(NULL, ")");
+	}
+	unsigned short ServerPort;   //获取服务器数据端口
+	ServerPort = unsigned short((atoi(part[4]) << 8) + atoi(part[5]));
+	char ServerAddr[200];
+	MEMSET(ServerAddr);
+	strcpy_s(ServerAddr, part[0]);
+	strcat_s(ServerAddr, ".");
+	strcat_s(ServerAddr, part[1]);
+	strcat_s(ServerAddr, ".");
+	strcat_s(ServerAddr, part[2]);
+	strcat_s(ServerAddr, ".");
+	strcat_s(ServerAddr, part[3]);
+	return Server{ ServerPort, ServerAddr };
+}
+
 short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString password)
 {
-	// 沈大为完成
-	// 连接成功请返回 SUCCESSFUL
-	// 账户密码错误请返回 FAILED_TYPE_1
-	// 其他错误导致的连接失败请返回 FAILED_TYPE_2
-	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedConnect的MessageBox
-	char read_buf[BUFFER_SIZE], send_buf[BUFFER_SIZE];
-	MEMSET(read_buf);
-	MEMSET(send_buf);
+	// 沈大为、杨元钊完成
+	// 连接成功返回 SUCCESSFUL
+	// 账户密码错误返回 FAILED_TYPE_1
+	// 其他错误导致的连接失败返回 FAILED_TYPE_2
+	char rbuff[BUFFER_SIZE], sbuff[BUFFER_SIZE];
+	MEMSET(sbuff); MEMSET(rbuff);
 	/* 初始化socket */
 	control_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == control_sock)
@@ -413,102 +384,67 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	{
 		return FAILED_TYPE_2;
 	}
-	recv(control_sock, read_buf, sizeof read_buf, 0);
+	RECV(control_sock);
 
-	sprintf(send_buf, "USER %s\r\n", account);
-	send(control_sock, send_buf, strlen(send_buf), 0);
-	MEMSET(read_buf);
-	recv(control_sock, read_buf, sizeof read_buf, 0);
+	MEMSET(sbuff); MEMSET(rbuff);
+	sprintf(sbuff, "USER %s\r\n", account);
+	SEND(control_sock);
+	RECV(control_sock);
 
-	sprintf(send_buf, "PASS %s\r\n", password);
-	send(control_sock, send_buf, strlen(send_buf), 0);
-	MEMSET(read_buf);
-	recv(control_sock, read_buf, sizeof read_buf, 0);
+	MEMSET(sbuff); MEMSET(rbuff);
+	sprintf(sbuff, "PASS %s\r\n", password);
+	SEND(control_sock);
+	RECV(control_sock);
 
-	if (strncmp(read_buf, "230", 3))
+	if (strncmp(rbuff, "230", 3))
 	{
 		return FAILED_TYPE_1;
 	}
-	return SUCCESSFUL;
-}
-
-short CFTPClientDlg::OnDisconnect()
-{
-	// 断连成功返回 SUCCESSFUL
-	// 断连失败返回 FAILED
-	char send_buf[BUFFER_SIZE], read_buf[BUFFER_SIZE];
-	sprintf(send_buf, "QUIT\r\n");
-	send(control_sock, send_buf, strlen(send_buf), 0);
-	MEMSET(read_buf);
-	recv(control_sock, read_buf, BUFFER_SIZE, 0);
-	if (strncmp(read_buf, "221", 3) == 0)
-	{
-		closesocket(control_sock);
-		return SUCCESSFUL;
-	}
-	else return FAILED;
+	else return SUCCESSFUL;
 }
 
 short CFTPClientDlg::OnRefresh()
 {
-	// 顾名扬完成
-	// 未连接服务器请返回 DISCONNECTED
-	// 刷新成功请返回 SUCCESSFUL
-	// 存在连接错误请返回 FAILED_TYPE_1
-	// 刷新失败请返回 FAILED         
-	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedRefresh的MessageBox  232行
+	// 顾名扬、杨元钊完成
+	// 未连接服务器返回 DISCONNECTED
+	// 刷新成功返回 SUCCESSFUL
+	// 存在连接错误返回 FAILED_TYPE_1
+	// 刷新失败返回 FAILED         
 	SOCKET data_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
 	struct sockaddr_in serv_data_addr;//数据接口地址
 	char rbuff[BUFFER_SIZE*10], sbuff[BUFFER_SIZE];
 	if (connected == false) { return DISCONNECTED; }
 	else {
 		ListBox.ResetContent(); //先清空box里原有的内容
-		MEMSET(rbuff);
-		MEMSET(sbuff);
+		MEMSET(rbuff); MEMSET(sbuff);
 		sprintf(sbuff, "PASV\r\n");//PASV进入被动模式
-		send(control_sock, sbuff, strlen(sbuff), 0);
-		recv(control_sock, rbuff, BUFFER_SIZE, 0);
+		SEND(control_sock);
+		RECV(control_sock);
 		if (strncmp(rbuff, "227", 3))
 		{
 			return FAILED_TYPE_1;
 		}
-		char* part[6];
-		if (strtok(rbuff, "("))
-		{
-			for (int i = 0; i < 5; i++)
-			{
-				part[i] = strtok(NULL, ",");
 
-			}
-			part[5] = strtok(NULL, ")");
-		}
-		unsigned short ServerPort;   //获取服务器数据端口
-		ServerPort = unsigned short((atoi(part[4]) << 8) + atoi(part[5]));
-		char m_addr[200];
-		strcpy_s(m_addr, part[0]);
-		strcat_s(m_addr, ".");
-		strcat_s(m_addr, part[1]);
-		strcat_s(m_addr, ".");
-		strcat_s(m_addr, part[2]);
-		strcat_s(m_addr, ".");
-		strcat_s(m_addr, part[3]);
+		Server server = GetPASVAddr(rbuff);
+		unsigned short ServerPort = server.ServerPort;
+		char* ServerAddr = server.ServerAddr;
 		sockaddr_in serveraddr2;
 		serveraddr2.sin_family = AF_INET;
-		serveraddr2.sin_addr.s_addr = inet_addr(m_addr);
+		serveraddr2.sin_addr.s_addr = inet_addr(ServerAddr);
 		serveraddr2.sin_port = htons(ServerPort);
 		int iconnect = connect(data_sock, (SOCKADDR*)&serveraddr2, sizeof(SOCKADDR));//数据socket连接
 		if (iconnect == SOCKET_ERROR) { return FAILED_TYPE_1; }// 连接错误
 		
+		MEMSET(sbuff); MEMSET(rbuff);
 		sprintf(sbuff, "MLSD\r\n");//MLSD是 LIST 命令的替代品，旨在标准化目录列表的格式
-		send(control_sock, sbuff, strlen(sbuff), 0);
-		MEMSET(rbuff);
-		recv(control_sock, rbuff, BUFFER_SIZE, 0);
-		MEMSET(rbuff);
-		recv(control_sock, rbuff, BUFFER_SIZE, 0);
-		if (!strncmp(rbuff, "226", 3))//连接成功
+		SEND(control_sock);
+		RECV(control_sock);
+		RECV(control_sock);
+
+		if (strncmp(rbuff, "226", 3) == 0)//连接成功
 		{
 			MEMSET(rbuff);
-			int lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
+			int lens = RECV(data_sock);
 			if (lens == 0) { return FAILED; }//没有成功接收数据
 			while (lens != SOCKET_ERROR && lens != 0) {//接收残余数据
 				char* p = strtok(rbuff, "\r\n");
@@ -519,7 +455,7 @@ short CFTPClientDlg::OnRefresh()
 					p = strtok(NULL, "\r\n");
 				}
 				MEMSET(rbuff);
-				lens = recv(data_sock, rbuff, sizeof(rbuff), 0);
+				lens = RECV(data_sock);
 
 				/*
 				//另一种实现方式 by 顾名扬
@@ -564,78 +500,45 @@ short CFTPClientDlg::OnRefresh()
 short CFTPClientDlg::OnUpload()
 {
 	// 梁川完成
-	// 未连接服务器请返回 DISCONNECTED
-	// 上传成功请返回 SUCCESSFUL
+	// 未连接服务器返回 DISCONNECTED
+	// 上传成功返回 SUCCESSFUL
 	// 连接错误请返回 FAILED_TYPE_1
 	// 打开文件失败返回 FAILED_TYPE_2
 	// 取消上传返回 CANCELED
 	long int bcnt;//字节数
 	int len;
-	SOCKET data_sock = socket(AF_INET, SOCK_STREAM, 0);;
-	struct sockaddr_in serv_data_addr;//数据接口地址
-	memset(&serv_data_addr, 0, sizeof(struct sockaddr_in));
-	char rbuff[1024], sbuff[1024], cod[4];//收发缓冲区和返回的代码
+	SOCKET data_sock = socket(AF_INET, SOCK_STREAM, 0);
+	char rbuff[1024], sbuff[1024];//收发缓冲区和返回的代码
 	FILE* fd;
 	if (connected == false) { return DISCONNECTED; }
 	else {
-		memset(sbuff, 0, sizeof(sbuff));
-		memset(rbuff, 0, sizeof(rbuff));
+		MEMSET(rbuff); MEMSET(sbuff);
 		sprintf(sbuff, "TYPE A\r\n");//进入被动模式
+		SEND(control_sock);
+		RECV(control_sock);
 
-		send(control_sock, sbuff, sizeof(sbuff), 0);
-		recv(control_sock, rbuff, sizeof(rbuff), 0);
-		
-		memset(sbuff, 0, sizeof(sbuff));
-		memset(rbuff, 0, sizeof(rbuff));
+		MEMSET(rbuff); MEMSET(sbuff);
 		sprintf(sbuff, "PASV\r\n");//进入被动模式
+		SEND(control_sock);
+		RECV(control_sock);
 
-		send(control_sock, sbuff, sizeof(sbuff), 0);
-		recv(control_sock, rbuff, sizeof(rbuff), 0);
-		strncpy(cod, rbuff, 3);
-		cod[3] = '\0';
-		if (strcmp(cod, "227") != 0) {
+		if (strncmp(rbuff, "227", 3)) {
 			return FAILED_TYPE_1;
 		}
-		char* part[6];
-		//char** part = new char* [6];
-		for (int i = 0; i < 5; i++)
-		{
-			part[i] = new char[10]();
-			memset(part[i], 0, 10);
-		}
-		//char* part[6];
-		if (strtok(rbuff, "("))
-		{
-			for (int i = 0; i < 5; i++)
-			{
-				part[i] = strtok(NULL, ",");
 
-			}
-			part[5] = strtok(NULL, ")");
-		}
-		int ServerPort;
-		ServerPort = (atoi(part[4]) << 8) + atoi(part[5]);
-		//string serv_addr;
-		//char* serv_addr = new char[200];
-		char serv_addr[200]="";
-		strcat_s(serv_addr, part[0]);
-		strcat_s(serv_addr, ".");
-		strcat_s(serv_addr, part[1]);
-		strcat_s(serv_addr, ".");
-		strcat_s(serv_addr, part[2]);
-		strcat_s(serv_addr, ".");
-		strcat_s(serv_addr, part[3]);
-		
+		Server server = GetPASVAddr(rbuff);
+		unsigned short ServerPort = server.ServerPort;
+		char* ServerAddr = server.ServerAddr;
+		sockaddr_in serv_data_addr;//数据接口地址
 		serv_data_addr.sin_family = AF_INET;  //使用IPv4地址
-		serv_data_addr.sin_addr.s_addr = inet_addr(serv_addr);//ip
+		serv_data_addr.sin_addr.s_addr = inet_addr(ServerAddr);//ip
 		serv_data_addr.sin_port = htons(ServerPort);  //端口
 		int iconnect = connect(data_sock, (SOCKADDR*)&serv_data_addr, sizeof(SOCKADDR));//数据socket是否连接成功
 		if (iconnect == SOCKET_ERROR) {
 			return FAILED_TYPE_1;
 		}
-		
-		CString strname,strpath;
-		//char* strname;
+
+		CString strname, strpath;
 		//弹出“打开”对话框
 		//CFileDialog file(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "所有文件(*.*)|*.*|",this);
 		CFileDialog file(TRUE);
@@ -644,33 +547,21 @@ short CFTPClientDlg::OnUpload()
 			strname = file.GetFileName();
 			strpath = file.GetPathName();
 			SetCurrentDirectoryA(strpath);
-			
-			//USES_CONVERSION;
-			//strname = T2A(sname);
-			//strname = "";
 		}
 		else {
 			// 取消上传
 			return CANCELED;
 		}
-		memset(rbuff, 0, sizeof(rbuff));
-		memset(sbuff, 0, sizeof(sbuff));
+		MEMSET(rbuff); MEMSET(sbuff);
 		sprintf(sbuff, "SIZE %s\r\n", strname);
-
-		send(control_sock, sbuff, sizeof(sbuff), 0);
-		recv(control_sock, rbuff, sizeof(rbuff), 0);
-		strncpy(cod, rbuff, 3);
-		cod[3] = '\0';
-		if (strcmp(cod, "550") == 0) {
-			memset(rbuff, 0, sizeof(rbuff));
-			memset(sbuff, 0, sizeof(sbuff));
+		SEND(control_sock);
+		RECV(control_sock);
+		if (strncmp(rbuff, "550", 3) == 0) {
+			MEMSET(rbuff); MEMSET(sbuff);
 			sprintf(sbuff, "STOR %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
-
-			send(control_sock, sbuff, sizeof(sbuff), 0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
-			recv(control_sock, rbuff, sizeof(rbuff), 0);
-			strncpy(cod, rbuff, 3);
-			cod[3] = '\0';
-			if (strcmp(cod, "150") == 0) {
+			SEND(control_sock);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
+			RECV(control_sock);
+			if (strncmp(rbuff, "150", 3) == 0) {
 				//连接成功
 				fd = fopen(strpath, "rb");//以二进制打开文件
 				if (fd != NULL) {
@@ -682,7 +573,7 @@ short CFTPClientDlg::OnUpload()
 					fseek(fd, 0, SEEK_SET);
 					while (1) { //从文件中循环读取数据并发送
 						//len用来实现进度条
-						memset(sbuff, 0, sizeof(sbuff));
+						MEMSET(sbuff);
 						int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
 						if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
 							closesocket(data_sock);
@@ -697,9 +588,8 @@ short CFTPClientDlg::OnUpload()
 						}
 					}
 					fclose(fd);
-					memset(rbuff, 0, sizeof(rbuff));
-
-					recv(control_sock, rbuff, sizeof(rbuff), 0);
+					MEMSET(rbuff);
+					RECV(control_sock);
 					return SUCCESSFUL;
 				}
 				else {
@@ -709,22 +599,18 @@ short CFTPClientDlg::OnUpload()
 			}
 		}
 		else {
-			long int offset = atoi(strtok(rbuff+4, "\r") );
-			memset(rbuff, 0, sizeof(rbuff));
-			memset(sbuff, 0, sizeof(sbuff));
+			long int offset = atoi(strtok(rbuff + 4, "\r"));
+			MEMSET(rbuff); MEMSET(sbuff);
 			sprintf(sbuff, "REST %d\r\n", offset);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
+			SEND(control_sock);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
+			RECV(control_sock);
 
-			send(control_sock, sbuff, sizeof(sbuff), 0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
-			recv(control_sock, rbuff, sizeof(rbuff), 0);
-			memset(rbuff, 0, sizeof(rbuff));
-			memset(sbuff, 0, sizeof(sbuff));
+			MEMSET(rbuff); MEMSET(sbuff);
 			sprintf(sbuff, "STOR %s\r\n", strname);//CString在这些函数中可能会出现类型不匹配的问题，到时候改
+			SEND(control_sock);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
+			RECV(control_sock);
 
-			send(control_sock, sbuff, sizeof(sbuff), 0);//查看服务器中是否有该文件，若有则说明已经上传或传输中断
-			recv(control_sock, rbuff, sizeof(rbuff), 0);
-			strncpy(cod, rbuff, 3);
-			cod[3] = '\0';
-			if (strcmp(cod, "150") == 0) {
+			if (strncmp(rbuff, "150", 3) == 0) {
 				//连接成功
 				fd = fopen(strpath, "rb");//以二进制打开文件
 				if (fd != NULL) {
@@ -736,7 +622,7 @@ short CFTPClientDlg::OnUpload()
 					fseek(fd, offset, SEEK_SET);
 					while (1) { //从文件中循环读取数据并发送
 						//len用来实现进度条
-						memset(sbuff, 0, sizeof(sbuff));
+						MEMSET(sbuff);
 						int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
 						if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
 							closesocket(data_sock);
@@ -751,9 +637,8 @@ short CFTPClientDlg::OnUpload()
 						}
 					}
 					fclose(fd);
-					memset(rbuff, 0, sizeof(rbuff));
-
-					recv(control_sock, rbuff, sizeof(rbuff), 0);
+					MEMSET(rbuff);
+					RECV(control_sock);
 					return SUCCESSFUL;
 				}
 				else {
@@ -762,8 +647,8 @@ short CFTPClientDlg::OnUpload()
 				}
 			}
 		}
-		
-		
+
+
 	}
 }
 
@@ -775,76 +660,44 @@ short CFTPClientDlg::OnDownload()
 	// 下载失败请返回 FAILED
 	// 取消下载返回 CANCELED
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDownload的MessageBox
-	SOCKET data_socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
-	char send_buf[1024] = {0};
-	char recv_buf[1024] = {0};
-	MEMSET(recv_buf);
-	MEMSET(send_buf);
-	int recv_len = 1024;
+	SOCKET data_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
+	char sbuff[BUFFER_SIZE], rbuff[BUFFER_SIZE];
+	MEMSET(rbuff); MEMSET(sbuff);
 	if (connected == false) { return DISCONNECTED; }
 	else {
-		sprintf(send_buf, "TYPE I\r\n");
+		sprintf(sbuff, "TYPE I\r\n");
+		SEND(control_sock);
+		RECV(control_sock);
 
-		send(control_sock, send_buf, strlen(send_buf), 0);
-		MEMSET(recv_buf);
-		recv(control_sock, recv_buf, recv_len, 0);
 		//首先通过控制连接将服务器切换到被动模式
-		char* strname;
-		sprintf(send_buf, "PASV\r\n");
-		int isend = send(control_sock, send_buf, strlen(send_buf), 0);
-		if (isend == SOCKET_ERROR) {
-			return FAILED_TYPE_2;
-
-		}
-		MEMSET(recv_buf);
-		int irecv = recv(control_sock, recv_buf, recv_len, 0);
-		if (irecv == SOCKET_ERROR) {
-			return FAILED_TYPE_1;
-		}
+		MEMSET(rbuff); MEMSET(sbuff);
+		sprintf(sbuff, "PASV\r\n");
+		SEND(control_sock);
+		RECV(control_sock);
 		
-		
-		if (strncmp(recv_buf, "227", 3)) {
+		if (strncmp(rbuff, "227", 3)) {
 			return FAILED_TYPE_3;
 		}
-		char* part[6];
-		if (strtok(recv_buf, "("))
-		{
-			for (int i = 0; i < 5; i++)
-			{
-				part[i] = strtok(NULL, ",");
-				
-			}
-			part[5] = strtok(NULL, ")");
-		}
-		unsigned short ServerPort;   //获取服务器数据端口
-		ServerPort = unsigned short((atoi(part[4]) << 8) + atoi(part[5]));
-		char m_addr[200];
-		strcpy_s(m_addr, part[0]);
-		strcat_s(m_addr, ".");
-		strcat_s(m_addr, part[1]);
-		strcat_s(m_addr, ".");
-		strcat_s(m_addr, part[2]);
-		strcat_s(m_addr, ".");
-		strcat_s(m_addr, part[3]);
 
+		Server server = GetPASVAddr(rbuff);
+		unsigned short ServerPort = server.ServerPort;
+		char* ServerAddr = server.ServerAddr;
 		sockaddr_in serveraddr2;
 		serveraddr2.sin_family = AF_INET;
-		serveraddr2.sin_addr.s_addr = inet_addr(m_addr);
+		serveraddr2.sin_addr.s_addr = inet_addr(ServerAddr);
 		serveraddr2.sin_port = htons(ServerPort);
-		
-		int iconnect = connect(data_socket, (SOCKADDR*)&serveraddr2, sizeof(SOCKADDR));//数据socket连接
+		int iconnect = connect(data_sock, (SOCKADDR*)&serveraddr2, sizeof(SOCKADDR));//数据socket连接
 		if (iconnect == SOCKET_ERROR) {
 			return FAILED_TYPE_4;
 		}
-		memset(send_buf, 0, sizeof(send_buf));
-		memset(recv_buf, 0, sizeof(recv_buf));
+
+		MEMSET(rbuff); MEMSET(sbuff);
 		//下面为下载实现
 		CString selfile;
 		int n = ListBox.GetCurSel();
 		if (n == -1) {
 			return FAILED_TYPE_6;
 		}
-		//int c = ListBox.GetCount();
 		ListBox.GetText(n, selfile);//获得想要下载资源名
 		if (!selfile.IsEmpty())
 		{
@@ -864,66 +717,46 @@ short CFTPClientDlg::OnDownload()
 
 				int size = ftell(fd);//获取文件指针偏移量，即文件大小。
 
-				sprintf(send_buf, "SIZE %s\r\n", selfile);
-
-				send(control_sock, send_buf, strlen(send_buf), 0);
-				MEMSET(recv_buf);
-				recv(control_sock, recv_buf, recv_len, 0);
+				MEMSET(rbuff); MEMSET(sbuff);
+				sprintf(sbuff, "SIZE %s\r\n", selfile);
+				SEND(control_sock);
+				RECV(control_sock);
 				int file_len;
-				strtok(recv_buf, " ");
+				strtok(rbuff, " ");
 				char* str;
 				str = strtok(NULL, "\r\n");
 				file_len = atoi(str);
 
 				int off = 0;
 				if (size == 0) {//如果是空文件那么从头下载
-					
 					//发送下载命令：
-
-
-					sprintf(send_buf, "RETR %s\r\n", selfile);
-
-					send(control_sock, send_buf, strlen(send_buf), 0);
-					MEMSET(recv_buf);
-					recv(control_sock, recv_buf, recv_len, 0);
-
-					bool temp = strncmp(recv_buf, "150", 3);
+					MEMSET(rbuff); MEMSET(sbuff);
+					sprintf(sbuff, "RETR %s\r\n", selfile);
+					SEND(control_sock);
+					RECV(control_sock);
 					
-					if (!strncmp(recv_buf, "150", 3)) {
-						//FILE* op = NULL;
-						//op = fopen(strname, "wb");//打开本地文件夹
-
+					if (strncmp(rbuff, "150", 3) == 0) {
 						int len = file_len;
-						if (file_len == 0) {
-							return SUCCESSFUL;
-						}
-						MEMSET(recv_buf);
-						int buf_len = recv(data_socket, recv_buf, recv_len, 0);
-						if (buf_len <= 0) {
-							return FAILED;
-						}
-						
+						MEMSET(rbuff);
+						int buf_len = RECV(data_sock);
 						while (buf_len > 0)
 						{
-
-							
-							CString temp = _T(recv_buf);
-							fwrite(recv_buf, 1, buf_len, fd);
+							CString temp = _T(rbuff);
+							fwrite(rbuff, 1, buf_len, fd);
 							off += buf_len;
 							float percent = float(off) / float(file_len) * 100;
 							m_pro.SetPos(percent);
-							MEMSET(recv_buf);
-							buf_len = recv(data_socket, recv_buf, recv_len, 0);
+							MEMSET(rbuff);
+							buf_len = RECV(data_sock);
 						}
-						if (buf_len < 0) {
-							return FAILED;
+						if (buf_len <= 0 && off < file_len) {
+							return FAILED_TYPE_5;
 						}
 						if (off == file_len) {
-							//strname.Close();//关闭文件
-							MEMSET(recv_buf);
-							recv(control_sock, recv_buf, recv_len, 0);
+							MEMSET(rbuff);
+							RECV(control_sock);
 							fclose(fd);
-							closesocket(data_socket);//关闭套接字
+							closesocket(data_sock);//关闭套接字
 							return SUCCESSFUL;
 						}
 					}
@@ -932,183 +765,45 @@ short CFTPClientDlg::OnDownload()
 				else {//断点续传
 					int offset = size;
 					off += offset;
-					sprintf(send_buf, "REST %ld\r\n", offset);
 
-					send(control_sock, send_buf, strlen(send_buf), 0);
-					MEMSET(recv_buf);
-					recv(control_sock, recv_buf, recv_len, 0);
+					MEMSET(rbuff); MEMSET(sbuff);
+					sprintf(sbuff, "REST %ld\r\n", offset);
+					SEND(control_sock);
+					RECV(control_sock);
 
-					sprintf(send_buf, "RETR %s\r\n", selfile);
+					MEMSET(rbuff); MEMSET(sbuff);
+					sprintf(sbuff, "RETR %s\r\n", selfile);
+					SEND(control_sock);
+					RECV(control_sock);
 
-					send(control_sock, send_buf, strlen(send_buf), 0);
-					MEMSET(recv_buf);
-					recv(control_sock, recv_buf, recv_len, 0);
 					int len = file_len - offset;//继续传输
-					MEMSET(recv_buf);
-					int buf_len = recv(data_socket, recv_buf, recv_len, 0);
-
+					MEMSET(rbuff);
+					int buf_len = RECV(data_sock);
 					while (buf_len > 0)
 					{
-
-						//fwrite(&recv_buf, 1, recv_len-1, op);
-						//CString temp = _T(recv_buf);
-						//strname.WriteString(_T(recv_buf));
-						fwrite(recv_buf, 1, buf_len, fd);
-						/*strname.SeekToEnd();*/
+						fwrite(rbuff, 1, buf_len, fd);
 						off += buf_len;
-						MEMSET(recv_buf);
+						MEMSET(rbuff);
 						float percent = float(off) / float(file_len) * 100;
 						m_pro.SetPos(percent);
-						buf_len = recv(data_socket, recv_buf, recv_len, 0);
+						buf_len = RECV(data_sock);
 					}
-					if (buf_len < 0) {
-						return FAILED;
+					if (buf_len <= 0 && off < file_len) {
+						return FAILED_TYPE_5;
 					}
 					if (off == file_len) {
-						MEMSET(recv_buf);
-						recv(control_sock, recv_buf, recv_len, 0);
+						MEMSET(rbuff);
+						RECV(control_sock);
 						fclose(fd);
-						closesocket(data_socket);//关闭套接字
+						closesocket(data_sock);//关闭套接字
 						return SUCCESSFUL;
 					}
-
 				}
-				//MessageBox(des);
 			}
-			
-			//CFileDialog file(FALSE,NULL,selfile, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT);
-			//if (file.DoModal() == IDOK)
-			//{
-			//	CString strpath;
-			//	strpath = file.GetPathName();//获取保存路径
-			//	FILE* fd;
-			//	fd = fopen(strpath, "ab");
-			//	//CStdioFile strname;//文件
-			//	//bool is_open = strname.Open(strpath, CFile::modeCreate | CFile::modeWrite | CFile::modeNoTruncate, NULL);
-			//	if (!fd) {
-			//		return FAILED;
-			//	}
-			//	//文件成功打开
-			//	/*CString strname;
-			//	strname = file.GetFileName();*/
-			//	
-			//	
-			//	//pFtpConnection->SetCurrentDirectory(strdir);
-			//	//获取文件大小
-			//	sprintf(send_buf,"SIZE %s\r\n",selfile);
-
-			//	send(control_sock, send_buf, strlen(send_buf), 0);
-			//	MEMSET(recv_buf);
-			//	recv(control_sock, recv_buf, recv_len, 0);
-			//	int file_len;
-			//	strtok(recv_buf, " ");
-			//	char* str;
-			//	str = strtok(NULL, "\r\n");
-			//	file_len = atoi(str);
-			//	//发送下载命令：
-			//	
-
-			//	sprintf(send_buf, "RETR %s\r\n", selfile);
-
-			//	send(control_sock, send_buf, strlen(send_buf),0);
-			//	MEMSET(recv_buf);
-			//	recv(control_sock, recv_buf, recv_len,0);
-
-			//	bool temp = strncmp(recv_buf, "150", 3);
-			//	if (!strncmp(recv_buf, "150", 3)) {
-			//		//FILE* op = NULL;
-			//		//op = fopen(strname, "wb");//打开本地文件夹
-
-			//		int len = file_len;
-			//		if (file_len == 0) {
-			//			return SUCCESSFUL;
-			//		}
-			//		MEMSET(recv_buf);
-			//		int buf_len = recv(data_socket, recv_buf, recv_len, 0);
-			//		if (buf_len <= 0) {
-			//			return FAILED;
-			//		}
-			//		int off = 0;
-			//		while(buf_len>0)
-			//		{
-			//			
-			//			//fwrite(&recv_buf, 1, recv_len-1, op);
-			//			CString temp = _T(recv_buf);
-			//			//strname.WriteString(_T(recv_buf));
-			//			fwrite(recv_buf, 1, recv_len, fd);
-			//			/*strname.SeekToEnd();*/
-			//			off += buf_len;
-			//			float percent = float(off) / float(file_len) * 100;
-			//			m_pro.SetPos(percent);
-			//			MEMSET(recv_buf);
-			//			buf_len = recv(data_socket, recv_buf, recv_len, 0);
-			//		}
-			//		if (buf_len < 0) {
-			//			return FAILED;
-			//		}
-			//		if (off==file_len) {
-			//			//strname.Close();//关闭文件
-			//			MEMSET(recv_buf);
-			//			recv(control_sock, recv_buf, recv_len, 0);
-			//			fclose(fd);
-			//			closesocket(data_socket);//关闭套接字
-			//			return SUCCESSFUL;
-			//		}
-			//		//进行断点续传
-			//		else {
-			//			
-			//			int offset = off;
-			//			
-			//			sprintf(send_buf, "REST %ld\r\n", offset);
-
-			//			send(control_sock, send_buf, strlen(send_buf), 0);
-			//			MEMSET(recv_buf);
-			//			recv(control_sock, recv_buf, recv_len, 0);
-
-			//			sprintf(send_buf, "RETR %s\r\n", selfile);
-
-			//			send(control_sock, send_buf, strlen(send_buf), 0);
-			//			MEMSET(recv_buf);
-			//			recv(control_sock, recv_buf, recv_len, 0);
-			//			int len = file_len - offset;//继续传输
-			//			MEMSET(recv_buf);
-			//			int buf_len = recv(data_socket, recv_buf, recv_len, 0);
-
-			//			while (buf_len > 0)
-			//			{
-
-			//				//fwrite(&recv_buf, 1, recv_len-1, op);
-			//				//CString temp = _T(recv_buf);
-			//				//strname.WriteString(_T(recv_buf));
-			//				fwrite(recv_buf, 1, recv_len, fd);
-			//				/*strname.SeekToEnd();*/
-			//				off += buf_len;
-			//				MEMSET(recv_buf);
-			//				float percent = float(off) / float(file_len) * 100;
-			//				m_pro.SetPos(percent);
-			//				buf_len = recv(data_socket, recv_buf, recv_len, 0);
-			//			}
-			//			if (buf_len < 0) {
-			//				return FAILED;
-			//			}
-			//			if (off == file_len) {
-			//				MEMSET(recv_buf);
-			//				recv(control_sock, recv_buf, recv_len, 0);
-			//				fclose(fd);
-			//				closesocket(data_socket);//关闭套接字
-			//				return SUCCESSFUL;
-			//			}
-			//			else {
-			//				fclose(fd);//关闭文件
-			//				closesocket(data_socket);//关闭套接字
-			//				return FAILED;
-			//			}
-
-			//		}
-
-			//	}
-			//	
-			//}
+			else
+			{
+				return CANCELED;
+			}
 		}
 	}
 }
@@ -1120,19 +815,18 @@ short CFTPClientDlg::OnDelete()
 	// 删除成功请返回 SUCCESSFUL
 	// 删除失败请返回 FAILED
 	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDelete的MessageBox
-	SOCKET data_sock;
-	char rbuff[1024], sbuff[1024];
+	char rbuff[BUFFER_SIZE], sbuff[BUFFER_SIZE];
 	if (connected == false) { return DISCONNECTED; }
 	else
 	{
 		CString selfile;
 		ListBox.GetText(ListBox.GetCurSel(), selfile);//获取用户要删除的资源名
-		char* filename = (LPSTR)(LPCTSTR)selfile;
+		CString filename = selfile;
 		MEMSET(sbuff);
-		sprintf(sbuff, "DELE %s\r\n", filename);
-		send(control_sock, sbuff, strlen(sbuff), 0);
 		MEMSET(rbuff);
-		recv(control_sock, rbuff, sizeof(rbuff), 0);
+		sprintf(sbuff, "DELE %s\r\n", filename);
+		SEND(control_sock);
+		RECV(control_sock);
 		if (strncmp(rbuff,"250",3)) return FAILED_TYPE_1;
 	}
 

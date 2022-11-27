@@ -12,12 +12,20 @@
 #define FAILED_TYPE_3 6
 #define FAILED_TYPE_4 7
 #define FAILED_TYPE_5 8
-#define FAILED_TYPE_6 10
-#define CANCELED 9
+#define FAILED_TYPE_6 9
+#define CANCELED 10
 
 #define BUFFER_SIZE 1024
 
-#define MEMSET(x) memset(x, 0, sizeof (x))
+#define MEMSET(x) memset(x, 0, sizeof x)
+
+#define SEND(x) send(x, sbuff, strlen(sbuff), 0)
+#define RECV(x) recv(x, rbuff, sizeof rbuff, 0)
+
+struct Server{
+	unsigned short ServerPort;
+	char* ServerAddr;
+};
 
 // CFTPClientDlg 对话框
 class CFTPClientDlg : public CDialogEx
@@ -55,7 +63,6 @@ public:
 	CEdit Account;
 	CEdit Password;
 	CListBox ListBox;
-	afx_msg void OnLbnSelchangeList1();
 	afx_msg void OnBnClickedConnect();
 	afx_msg void OnBnClickedRefresh();
 	afx_msg void OnBnClickedUpload();
@@ -64,15 +71,15 @@ public:
 	afx_msg void OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult);
 
 	short OnConnect(CString, CString, CString);
-	short OnDisconnect();
 	short OnRefresh();
 	short OnUpload();
 	short OnDownload();
 	short OnDelete();
 
+	Server GetPASVAddr(char*);
+
 	bool connected; //全局变量，记录是否连接到服务器上
 	SOCKET control_sock; //控制接口
-	//SOCKET data_sock; //数据接口
 
 	CProgressCtrl m_pro;
 };
