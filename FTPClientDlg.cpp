@@ -64,8 +64,6 @@ END_MESSAGE_MAP()
 
 // CFTPClientDlg 对话框
 
-
-
 CFTPClientDlg::CFTPClientDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_FTPCLIENT_DIALOG, pParent)
 {
@@ -94,7 +92,6 @@ BEGIN_MESSAGE_MAP(CFTPClientDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	//ON_LBN_SELCHANGE(IDC_LIST1, &CFTPClientDlg::OnLbnSelchangeList1)
 	ON_BN_CLICKED(IDC_Connect, &CFTPClientDlg::OnBnClickedConnect)
 	ON_BN_CLICKED(IDC_Refresh, &CFTPClientDlg::OnBnClickedRefresh)
 	ON_BN_CLICKED(IDC_Upload, &CFTPClientDlg::OnBnClickedUpload)
@@ -233,6 +230,7 @@ void CFTPClientDlg::OnBnClickedRefresh()
 	else if (status == FAILED_TYPE_1)
 	{
 		MessageBox(_T("网络连接错误！"));
+		connected = false;
 	}
 	else
 	{
@@ -252,6 +250,7 @@ void CFTPClientDlg::OnBnClickedUpload()
 	else if(status == FAILED_TYPE_1)
 	{
 		MessageBox(_T("网络连接错误！"));
+		connected = false;
 	}
 	else if(status == FAILED_TYPE_2)
 	{
@@ -291,6 +290,7 @@ void CFTPClientDlg::OnBnClickedDownload()
 	else if (status == FAILED_TYPE_5)
 	{
 		MessageBox(_T("网络连接错误！"));
+		connected = false;
 	}
 	else if (status == FAILED_TYPE_6)
 	{
@@ -573,19 +573,31 @@ short CFTPClientDlg::OnUpload()
 					fseek(fd, 0, SEEK_SET);
 					while (1) { //从文件中循环读取数据并发送
 						//len用来实现进度条
-						MEMSET(sbuff);
-						int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
-						if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
-							closesocket(data_sock);
-							return FAILED_TYPE_1;
+						MSG msg;  // 多线程
+						if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+						{
+							if (msg.message == WM_QUIT)
+								break;
+							TranslateMessage(&msg);
+							DispatchMessage(&msg);
 						}
-						bcnt += len;
-						float percent = float(bcnt) / float(size) * 100;
-						m_pro.SetPos(percent);
-						if (len < sizeof(sbuff)) {
-							closesocket(data_sock);
-							break; //传输完成
+						else
+						{
+							MEMSET(sbuff);
+							int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
+							if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
+								closesocket(data_sock);
+								return FAILED_TYPE_1;
+							}
+							bcnt += len;
+							float percent = float(bcnt) / float(size) * 100;
+							m_pro.SetPos(percent);
+							if (len < sizeof(sbuff)) {
+								closesocket(data_sock);
+								break; //传输完成
+							}          
 						}
+						
 					}
 					fclose(fd);
 					MEMSET(rbuff);
@@ -622,18 +634,29 @@ short CFTPClientDlg::OnUpload()
 					fseek(fd, offset, SEEK_SET);
 					while (1) { //从文件中循环读取数据并发送
 						//len用来实现进度条
-						MEMSET(sbuff);
-						int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
-						if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
-							closesocket(data_sock);
-							return FAILED_TYPE_1;
+						MSG msg;  // 多线程
+						if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+						{
+							if (msg.message == WM_QUIT)
+								break;
+							TranslateMessage(&msg);
+							DispatchMessage(&msg);
 						}
-						bcnt += len;
-						float percent = float(bcnt) / float(size) * 100;
-						m_pro.SetPos(percent);
-						if (len < sizeof(sbuff)) {
-							closesocket(data_sock);
-							break; //传输完成
+						else
+						{
+							MEMSET(sbuff);
+							int len = fread(sbuff, 1, sizeof(sbuff), fd); //fread从file文件读取sizeof(sbuff)长度的数据到sbuff，返回成功读取的数据个数
+							if (send(data_sock, sbuff, len, 0) == SOCKET_ERROR) {
+								closesocket(data_sock);
+								return FAILED_TYPE_1;
+							}
+							bcnt += len;
+							float percent = float(bcnt) / float(size) * 100;
+							m_pro.SetPos(percent);
+							if (len < sizeof(sbuff)) {
+								closesocket(data_sock);
+								break; //传输完成
+							}
 						}
 					}
 					fclose(fd);
@@ -741,13 +764,24 @@ short CFTPClientDlg::OnDownload()
 						int buf_len = RECV(data_sock);
 						while (buf_len > 0)
 						{
-							CString temp = _T(rbuff);
-							fwrite(rbuff, 1, buf_len, fd);
-							off += buf_len;
-							float percent = float(off) / float(file_len) * 100;
-							m_pro.SetPos(percent);
-							MEMSET(rbuff);
-							buf_len = RECV(data_sock);
+							MSG msg;  // 多线程
+							if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+							{
+								if (msg.message == WM_QUIT)
+									break;
+								TranslateMessage(&msg);
+								DispatchMessage(&msg);
+							}
+							else
+							{
+								CString temp = _T(rbuff);
+								fwrite(rbuff, 1, buf_len, fd);
+								off += buf_len;
+								float percent = float(off) / float(file_len) * 100;
+								m_pro.SetPos(percent);
+								MEMSET(rbuff);
+								buf_len = RECV(data_sock);
+							}
 						}
 						if (buf_len <= 0 && off < file_len) {
 							return FAILED_TYPE_5;
@@ -781,12 +815,23 @@ short CFTPClientDlg::OnDownload()
 					int buf_len = RECV(data_sock);
 					while (buf_len > 0)
 					{
-						fwrite(rbuff, 1, buf_len, fd);
-						off += buf_len;
-						MEMSET(rbuff);
-						float percent = float(off) / float(file_len) * 100;
-						m_pro.SetPos(percent);
-						buf_len = RECV(data_sock);
+						MSG msg;  // 多线程
+						if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+						{
+							if (msg.message == WM_QUIT)
+								break;
+							TranslateMessage(&msg);
+							DispatchMessage(&msg);
+						}
+						else
+						{
+							fwrite(rbuff, 1, buf_len, fd);
+							off += buf_len;
+							MEMSET(rbuff);
+							float percent = float(off) / float(file_len) * 100;
+							m_pro.SetPos(percent);
+							buf_len = RECV(data_sock);
+						}
 					}
 					if (buf_len <= 0 && off < file_len) {
 						return FAILED_TYPE_5;
