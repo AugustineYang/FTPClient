@@ -186,6 +186,7 @@ HCURSOR CFTPClientDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+// 以下UI交互函数由杨元钊编写
 void CFTPClientDlg::OnBnClickedConnect()
 {
 	CString ipaddress;
@@ -281,11 +282,11 @@ void CFTPClientDlg::OnBnClickedDownload()
 	}
 	else if (status == FAILED_TYPE_3)
 	{
-		MessageBox(_T("被动模式启动失败"));
+		MessageBox(_T("被动模式启动失败！"));
 	}
 	else if (status == FAILED_TYPE_4)
 	{
-		MessageBox(_T("数据连接建立失败"));
+		MessageBox(_T("数据连接建立失败！"));
 	}
 	else if (status == FAILED_TYPE_5)
 	{
@@ -294,7 +295,7 @@ void CFTPClientDlg::OnBnClickedDownload()
 	}
 	else if (status == FAILED_TYPE_6)
 	{
-		MessageBox(_T("请选择要下载的文件"));
+		MessageBox(_T("请选择要下载的文件！"));
 	}
 	else if(status == DISCONNECTED)
 	{
@@ -315,9 +316,13 @@ void CFTPClientDlg::OnBnClickedDelete()
 		MessageBox(_T("删除成功！"));
 		OnRefresh();
 	}
-	else if(status == FAILED_TYPE_1)
+	else if(status == FAILED)
 	{
 		MessageBox(_T("删除失败！"));
+	}
+	else if (status == FAILED_TYPE_1)
+	{
+		MessageBox(_T("请选择要删除的文件！"));
 	}
 	else
 	{
@@ -678,11 +683,14 @@ short CFTPClientDlg::OnUpload()
 short CFTPClientDlg::OnDownload()
 {
 	// 李睿哲完成
-	// 未连接服务器请返回 DISCONNECTED
-	// 下载成功请返回 SUCCESSFUL
-	// 下载失败请返回 FAILED
+	// 未连接服务器返回 DISCONNECTED
+	// 下载成功返回 SUCCESSFUL
+	// 下载失败返回 FAILED
 	// 取消下载返回 CANCELED
-	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDownload的MessageBox
+	// 被动模式启动失败返回 FAILED_TYPE_3
+	// 数据连接建立失败返回 FAILED_TYPE_4
+	// 网络连接错误返回 FAILED_TYPE_5
+	// 未选择文件返回 FAILED_TYPE_6
 	SOCKET data_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); //数据socket
 	char sbuff[BUFFER_SIZE], rbuff[BUFFER_SIZE];
 	MEMSET(rbuff); MEMSET(sbuff);
@@ -856,23 +864,29 @@ short CFTPClientDlg::OnDownload()
 short CFTPClientDlg::OnDelete()
 {
 	// 胡雅馨完成
-	// 未连接服务器请返回 DISCONNECTED
-	// 删除成功请返回 SUCCESSFUL
-	// 删除失败请返回 FAILED
-	// 如果需要添加错误类型，请模仿OnUpload部分，并修改OnBnClickedDelete的MessageBox
+	// 未连接服务器返回 DISCONNECTED
+	// 删除成功返回 SUCCESSFUL
+	// 删除失败返回 FAILED
+	// 未选择文件返回 FAILED_TYPE_1
 	char rbuff[BUFFER_SIZE], sbuff[BUFFER_SIZE];
 	if (connected == false) { return DISCONNECTED; }
 	else
 	{
 		CString selfile;
-		ListBox.GetText(ListBox.GetCurSel(), selfile);//获取用户要删除的资源名
+		int n = ListBox.GetCurSel();
+		if (n == -1)
+		{
+			// 未选择文件
+			return FAILED_TYPE_1;
+		}
+		ListBox.GetText(n, selfile);//获取用户要删除的资源名
 		CString filename = selfile;
 		MEMSET(sbuff);
 		MEMSET(rbuff);
 		sprintf(sbuff, "DELE %s\r\n", filename);
 		SEND(control_sock);
 		RECV(control_sock);
-		if (strncmp(rbuff,"250",3)) return FAILED_TYPE_1;
+		if (strncmp(rbuff,"250",3)) return FAILED;
 	}
 
 	return SUCCESSFUL;
