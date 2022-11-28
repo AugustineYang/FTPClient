@@ -60,6 +60,7 @@ public:
 	CButton Download;
 	CButton Delete;
 	CEdit IPAddress;
+	CEdit Port;
 	CEdit Account;
 	CEdit Password;
 	CListBox ListBox;
@@ -70,7 +71,7 @@ public:
 	afx_msg void OnBnClickedDelete();
 	afx_msg void OnNMCustomdrawProgress1(NMHDR* pNMHDR, LRESULT* pResult);
 
-	short OnConnect(CString, CString, CString);
+	short OnConnect(CString, CString, CString, CString);
 	short OnRefresh();
 	short OnUpload();
 	short OnDownload();

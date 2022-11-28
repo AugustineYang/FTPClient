@@ -190,12 +190,14 @@ HCURSOR CFTPClientDlg::OnQueryDragIcon()
 void CFTPClientDlg::OnBnClickedConnect()
 {
 	CString ipaddress;
+	CString port;
 	CString account;
 	CString password;
 	GetDlgItemText(IDC_IPAddress, ipaddress);
+	GetDlgItemText(IDC_Port, port);
 	GetDlgItemText(IDC_Account, account);
 	GetDlgItemText(IDC_Password, password);
-	short status = OnConnect(ipaddress, account, password);
+	short status = OnConnect(ipaddress, port, account, password);
 	if (status == SUCCESSFUL)
 	{
 		MessageBox(_T("连接成功！"));
@@ -366,7 +368,7 @@ Server CFTPClientDlg::GetPASVAddr(char* rbuff)
 	return Server{ ServerPort, ServerAddr };
 }
 
-short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString password)
+short CFTPClientDlg::OnConnect(CString ipaddress, CString port, CString account, CString password)
 {
 	// 沈大为、杨元钊完成
 	// 连接成功返回 SUCCESSFUL
@@ -384,7 +386,7 @@ short CFTPClientDlg::OnConnect(CString ipaddress, CString account, CString passw
 	memset(&server, 0, sizeof(struct sockaddr_in));
 	server.sin_family = AF_INET;
 	server.sin_addr.S_un.S_addr = inet_addr(ipaddress);
-	server.sin_port = htons(21);
+	server.sin_port = htons(atoi(port));
 	if (SOCKET_ERROR == connect(control_sock, (struct sockaddr*)&server, sizeof(server)))
 	{
 		return FAILED_TYPE_2;
@@ -507,7 +509,7 @@ short CFTPClientDlg::OnUpload()
 	// 梁川完成
 	// 未连接服务器返回 DISCONNECTED
 	// 上传成功返回 SUCCESSFUL
-	// 连接错误请返回 FAILED_TYPE_1
+	// 连接错误返回 FAILED_TYPE_1
 	// 打开文件失败返回 FAILED_TYPE_2
 	// 取消上传返回 CANCELED
 	long int bcnt;//字节数
@@ -892,4 +894,4 @@ short CFTPClientDlg::OnDelete()
 	return SUCCESSFUL;
 }
 
-	
+

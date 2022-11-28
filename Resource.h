@@ -18,6 +18,7 @@
 #define IDC_Connect                     1007
 #define IDC_LIST1                       1008
 #define IDC_PROGRESS1                   1009
+#define IDC_Port                        1010
 
 // Next default values for new objects
 // 
