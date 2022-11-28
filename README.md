@@ -14,4 +14,4 @@
 
 引入多线程处理，避免了后端运行时前端假死的问题
 
-![image](https://user-images.githubusercontent.com/47497861/204268813-ab53f8c6-6545-4d0f-bb02-4072303f53dc.png)
+![image](https://user-images.githubusercontent.com/47497861/204271824-aaed6da9-de18-476e-89ec-a3a4a3a50094.png)
